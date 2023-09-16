@@ -11,9 +11,11 @@ uri = os.getenv("ATLAS_URI", "None")
 # Create a new client and connect to the server
 client = MongoClient(uri)
 db = client.ptt
-collection = db.gossip
 
-for i in range(15, 61):
-    crawl_results = crawl_articles("https://www.ptt.cc/bbs/Gossiping/index.html", i, 1)
+base_url = "https://www.ptt.cc/bbs/Gossiping/index.html"
+ptt_board = "gossip" if "Gossiping" in base_url else "politics"
+for i in range(2, 337):
+    crawl_results = crawl_articles(base_url, i, 1)
     if crawl_results:
+        collection = db[ptt_board]
         collection.insert_many(crawl_results)
