@@ -51,6 +51,14 @@ def update_article(target_collection: str, query: dict, new_data: dict):
     db[target_collection].update_one(query, {"$set": {"new_data": new_data}})
 
 
+def update_wrong_ip():
+    result = list(db["gossip"].find({"article_data.ipaddress": {'$regex': '\s'}}))
+    for _ in result:
+        new_ip = _["article_data"]["ipaddress"].split(" ")[0]
+        new_ip_values = {"$set": {"article_data.ipaddress": new_ip}}
+        db["gossip"].update_many({"article_data.ipaddress": {'$regex': '\s'}}, new_ip_values)
+
+
 if __name__ == "__main__":
     existence = article_existing(target_collection="gossip",
                                  search_url="https://www.ptt.cc/bbs/Gossiping/M.1694736317.A.3A1.html")
@@ -58,4 +66,5 @@ if __name__ == "__main__":
         num_comments = check_article_comments_num(target_collection="gossip",
                                                   search_url="https://www.ptt.cc/bbs/Gossiping/M.1694736317.A.3A1.html")
         print(num_comments)
+
 
