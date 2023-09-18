@@ -9,7 +9,6 @@ uri = os.getenv("ATLAS_URI", "None")
 
 PTT_BOARD = "gossip"
 
-# Create a new client and connect to the server
 client = MongoClient(uri)
 db = client.ptt
 collection = db[PTT_BOARD]
@@ -37,7 +36,3 @@ for document in cursor:
         ip.add(ipaddress)
 print(len(ip))
 print(time.time() - start)
-
-
-
-

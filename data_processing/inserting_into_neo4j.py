@@ -1,19 +1,13 @@
 import os
 import time
 from dotenv import load_dotenv
-from py2neo import Graph, Node, Relationship, NodeMatcher
-from py2neo.bulk import create_nodes, create_relationships
-
+from py2neo import Graph, Node, Relationship
 from aggregate_mongo import extract_all_authors_accounts_and_ip
 
 load_dotenv(verbose=True)
 
-# Create a new graph client and connect to the server
 graph = Graph(uri=f"{os.getenv('NEO4J_URL')}:7687",
               auth=(os.getenv("NEO4J_USERNAME", "YourAccount"), os.getenv("NEO4J_PASSWORD", "YourPassword")))
-
-# matcher_1 = NodeMatcher(graph)
-# node_1 = matcher_1.match()
 
 start = time.time()
 account_ids, account_ips = extract_all_authors_accounts_and_ip("gossip")

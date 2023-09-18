@@ -20,7 +20,7 @@ log/
 students/.DS_Store
 students/Raymond/.DS_Store
 
-
+*/connector.json
 
 
 __pycache__/*.pyc
