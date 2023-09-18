@@ -1,7 +1,6 @@
 import os
 import time
 from dotenv import load_dotenv
-from pymongo.server_api import ServerApi
 from pymongo.mongo_client import MongoClient
 
 load_dotenv(verbose=True)
@@ -10,7 +9,6 @@ uri = os.getenv("ATLAS_URI", "None")
 
 BATCH_SIZE = 10000
 
-# Create a new client and connect to the server
 client = MongoClient(uri)
 db = client.ptt
 
@@ -82,11 +80,13 @@ def extract_all_authors_accounts_and_ip(target_collection: str):
         ipaddress = article_data.get("ipaddress", "")
         authors_id_set.append(author)
         authors_ip_set.append(ipaddress)
-    print(len(authors_id_set))
     return authors_id_set, authors_ip_set
 
 
 if __name__ == "__main__":
     start = time.time()
-    print(extract_all_authors_accounts_and_ip(target_collection="gossip"))
+    count_articles(target_collection="gossip")
+    count_accounts(target_collection="gossip")
+    count_comments(target_collection="gossip")
+    extract_all_authors_accounts_and_ip(target_collection="gossip")
     print(time.time() - start)
