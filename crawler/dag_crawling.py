@@ -1,19 +1,120 @@
+import os
 import bs4
 import time
 import pytz
-import logging
 import requests
 import urllib.parse
+from airflow import DAG
+from typing import Union
+from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
-from datetime import datetime
+from dotenv import load_dotenv
+from pymongo import MongoClient
 from fake_useragent import UserAgent
-from operations_mongo import article_existing, check_article_comments_num, update_article
+from config_crawl import default_args
+from airflow.operators.empty import EmptyOperator
+from airflow.operators.python import PythonOperator
 
-cookies = {"from": "/bbs/Gossiping/index.html", "yes": "yes"}
+load_dotenv(verbose=True)
+uri = os.getenv("ATLAS_URI", "None")
+client = MongoClient(uri)
+db = client.ptt
 
 ua = UserAgent()
+cookies = {"from": "/bbs/Gossiping/index.html", "yes": "yes"}
 
 
+# BASE_URL = "https://www.ptt.cc/bbs/Gossiping/index.html"
+# PTT_BOARD = "gossip" if "Gossiping" in BASE_URL else "politics"
+
+
+# --- Functions related to mongodb ---
+def article_existing(search_url: str, target_collection: str) -> bool:
+    """
+    check whether article already exists in mongodb
+    :param target_collection: target collection
+    :param search_url: article url
+    :return: True if article exists, False otherwise
+    """
+    return True if db[target_collection].find_one({"article_url": search_url}) else False
+
+
+def update_article(search_url: str, new_data: dict, previous_num_comments: int, target_collection: str):
+    """
+    update article in mongodb
+    :param target_collection: target collection
+    :param search_url: article url
+    :param new_data: new data
+    :param previous_num_comments: previous number of comments
+    """
+    num_of_favor = new_data["num_of_favor"]
+    num_of_against = new_data["num_of_against"]
+    num_of_arrow = new_data["num_of_arrow"]
+    num_of_comment = num_of_favor + num_of_against + num_of_arrow
+    new_comments = new_data["comments"][previous_num_comments:]
+
+    db[target_collection].update_one(
+        {"article_url": search_url},
+        {
+            "$set": {
+                "article_data.last_crawled_datetime": datetime.now().timestamp(),
+                "article_data.num_of_favor": num_of_favor,
+                "article_data.num_of_against": num_of_against,
+                "article_data.num_of_arrow": num_of_arrow,
+                "article_data.num_of_comment": num_of_comment,
+            }
+        })
+
+    for comment in new_comments:
+        db[target_collection].update_one(
+            {"article_url": search_url},
+            {"$push": {"article_data.comments": comment}})
+
+
+def check_article_comments_num(search_url: str, target_collection: str) -> int:
+    """
+    get number of comments for article
+    :param target_collection: target collection
+    :param search_url: article url
+    :return: number of comments
+    """
+    return db[target_collection].find_one({"article_url": search_url})["article_data"]["num_of_comment"]
+
+
+def update_wrong_ip(target_collection: str):
+    """
+    find out documents with error ip which includes space at the end before update the ip address
+    """
+    result = list(db[target_collection].find({"article_data.ipaddress": {'$regex': '\s'}}))
+    for _ in result:
+        new_ip = _["article_data"]["ipaddress"].split(" ")[0]
+        new_ip_values = {"$set": {"article_data.ipaddress": new_ip}}
+        db[target_collection].update_many({"article_data.ipaddress": {'$regex': '\s'}}, new_ip_values)
+
+
+def delete_duplicates(target_collection: str):
+    """
+    delete duplicated articles in mongodb
+    :param target_collection: target collection
+    """
+    collection = db[target_collection]
+    pipeline = [
+        {"$group": {"_id": "$article_url", "ids": {"$push": "$_id"}, "count": {"$sum": 1}}},
+        {"$match": {"count": {"$gt": 1}}}
+    ]
+    duplicates = collection.aggregate(pipeline)
+
+    for duplicate in duplicates:
+        print(duplicate)
+        article_url = duplicate["_id"]
+        duplicate_ids = duplicate["ids"]
+        print(f"Duplicate article_url: {article_url}, count: {len(duplicate_ids)}")
+
+        for id_to_delete in duplicate_ids[1:]:
+            collection.delete_one({"_id": id_to_delete})
+
+
+# --- Functions related to crawling ---
 def get_article_info(meta_info: bs4.element.ResultSet, _idx: int) -> str:
     """
     get article information
@@ -30,16 +131,19 @@ def parse_article(page_response: requests.models.Response) -> dict:
     :param page_response: response object of page response
     :return: dict containing article information
     """
+    taipei = pytz.timezone('Asia/Taipei')
+
     soup = BeautifulSoup(page_response.text, "lxml")
 
     article_meta_info = soup.find_all("div", "article-metaline")
 
-    article_author, article_title, article_time, article_time_timestamp = None, None, None, None
+    article_author, article_title, article_time, localized_article_timestamp = None, None, None, None
     try:
         article_author = get_article_info(article_meta_info, 0)
         article_title = get_article_info(article_meta_info, 1)
         article_time = get_article_info(article_meta_info, 2)
-        article_time_timestamp = datetime.strptime(article_time, '%a %b %d %H:%M:%S %Y').timestamp()
+        article_timestamp = datetime.strptime(article_time, '%a %b %d %H:%M:%S %Y')
+        localized_article_timestamp = taipei.localize(article_timestamp).timestamp()
     except IndexError as e:
         print(f"{e}: article author, title and time is not found")
 
@@ -56,6 +160,7 @@ def parse_article(page_response: requests.models.Response) -> dict:
             # to handle: https://www.ptt.cc/bbs/Gossiping/M.1694678215.A.764.html (no --\n※ 發信站:)
             # to handle: https://www.ptt.cc/bbs/Gossiping/M.1694572013.A.B01.html
             # to handle: https://www.ptt.cc/bbs/Gossiping/M.1694694211.A.8CB.html
+            # to handle: https://www.ptt.cc/bbs/HatePolitics/M.1695217763.A.386.html
             else:
                 bottom_text = soup.find("div", id="main-content").get_text().split("--\n※ 編輯: ")
                 if len(bottom_text) == 2:
@@ -63,8 +168,15 @@ def parse_article(page_response: requests.models.Response) -> dict:
                     article_ip = bottom_text[1].split(" ")[1][1:]
                 else:
                     bottom_text = soup.find("div", id="main-content").get_text().split("--\n\n※ 發信站: 批踢踢實業坊(ptt.cc), 來自: ")
-                    main_content = bottom_text[0].split(article_time)[1]
-                    article_ip = bottom_text[1].split(" ")[0].strip()
+                    if len(bottom_text) == 2:
+                        main_content = bottom_text[0].split(article_time)[1]
+                        article_ip = bottom_text[1].split(" ")[0].strip()
+                    else:
+
+                        bottom_text = soup.find("div", id="main-content").get_text().split("※ 發信站: 批踢踢實業坊(ptt.cc), 來自: ")
+                        if len(bottom_text) == 2:
+                            main_content = bottom_text[0].split(article_time)[1]
+                            article_ip = bottom_text[1].split(" ")[0].strip()
     except IndexError as e:
         print(f"Main content and Article IP error: {e}")
 
@@ -88,7 +200,7 @@ def parse_article(page_response: requests.models.Response) -> dict:
             arrow += 1 if comment_type == "→" else 0
             against += 1 if comment_type == "噓" else 0
 
-            month_date, commenter_ip, comment_timestamp = None, None, None
+            month_date, commenter_ip, localized_timestamp = None, None, None
             if len(commenter_info) == 3 and article_time is not None:
                 # Sometimes the commenter ip has not been recorded yet
                 commenter_ip = commenter_info[-3] if len(commenter_info) >= 3 else None
@@ -102,17 +214,20 @@ def parse_article(page_response: requests.models.Response) -> dict:
                     # to process article: https://www.ptt.cc/bbs/Gossiping/M.1695070048.A.60B.html (cpmmenter: funeasy)
                     if len(comment_time) < 5:
                         comment_time = datetime.fromtimestamp(comments[-1]["comment_time"]).strftime('%H:%M')
-                    comment_timestamp = datetime.strptime(f"{comment_date} {comment_time}", '%Y-%m-%d %H:%M').timestamp() + 59
+                    # comment_timestamp = datetime.strptime(f"{comment_date} {comment_time}", '%Y-%m-%d %H:%M').timestamp() + 59
+
+                    comment_timestamp = datetime.strptime(f"{comment_date} {comment_time}", '%Y-%m-%d %H:%M')
+                    localized_timestamp = taipei.localize(comment_timestamp)
 
             comment_content = comment.find("span", class_="push-content").get_text().strip(": ")
             comments.append({"commenter_id": commenter_id,
                              "commenter_ip": commenter_ip,
-                             "comment_time": comment_timestamp,
+                             "comment_time": localized_timestamp.timestamp() + 59,
                              "comment_type": comment_type,
                              # "comment_latency": comment_timestamp - article_time_timestamp,
                              "comment_content": comment_content})
     article_info = {"author": article_author, "ipaddress": article_ip,
-                    "title": article_title, "time": article_time_timestamp,
+                    "title": article_title, "time": localized_article_timestamp,
                     "main_content": main_content,
                     "last_crawled_datetime": datetime.now().timestamp(),
                     "num_of_comment": favor + against + arrow,
@@ -190,8 +305,8 @@ def crawl_articles(base_url: str, start_page: int, pages: int):
                                 if parse_article(current_session.get(article_url, headers=headers)) is not None:
                                     break
                             except requests.exceptions.ConnectionError as e:
-                                print(f"{e}: cannot connect to the server - wait 75 seconds to restart.")
-                                time.sleep(75)
+                                print(f"{e}: cannot connect to the server - wait 60 seconds to restart.")
+                                time.sleep(60)
                                 headers = {"user-agent": ua.random}
                         print(f"Insert Article {article_url}.")
                         parsing_result = parse_article(current_session.get(article_url))
@@ -209,14 +324,120 @@ def crawl_articles(base_url: str, start_page: int, pages: int):
                         else:
                             print(f"Ignore Article {article_url}. (for no changes have been made)")
                             continue
-                time.sleep(5.0)
+                time.sleep(4.0)
             print(f"--- finish crawling: page {idx} ---")
-            time.sleep(20.0)
+            time.sleep(9.0)
         return crawling_results
 
 
-if __name__ == "__main__":
-    test_base_url = "https://www.ptt.cc/bbs/Gossiping/index.html"
-    ptt_board = "gossip" if "Gossiping" in test_base_url else "politics"
-    crawl_results = crawl_articles(test_base_url, 2, 1)
+def crawl_ptt_latest(base_url: str, ptt_board: str):
+    for i in range(1, 5):
+        crawl_results = crawl_articles(base_url, i, 1)
+        if crawl_results:
+            collection = db[ptt_board]
+            collection.insert_many(crawl_results)
 
+
+def crawl_ptt_history(base_url: str, ptt_board: str):
+    for i in range(5, 4000):
+        crawl_results = crawl_articles(base_url, i, 1)
+        if crawl_results:
+            collection = db[ptt_board]
+            collection.insert_many(crawl_results)
+
+
+def create_dag_historical_data(dag_id: str, schedule_interval: Union[str, timedelta], base_url: str):
+    ptt_board = "gossip" if "Gossiping" in base_url else "politics"
+
+    dag = DAG(
+        dag_id=dag_id,
+        default_args=default_args,
+        schedule_interval=schedule_interval,
+        catchup=False
+    )
+
+    start = EmptyOperator(
+        task_id="start",
+        dag=dag
+    )
+
+    crawl = PythonOperator(
+        task_id="crawl",
+        python_callable=crawl_ptt_history,
+        op_args=[base_url, ptt_board],
+        dag=dag
+    )
+
+    end = EmptyOperator(
+        task_id="end",
+        dag=dag
+    )
+
+    # Define the task ordering
+    start >> crawl >> end
+
+    return dag
+
+
+def create_dag_latest_data(dag_id: str, schedule_interval: Union[str, timedelta], base_url: str):
+    ptt_board = "gossip" if "Gossiping" in base_url else "politics"
+
+    dag = DAG(
+        dag_id=dag_id,
+        default_args=default_args,
+        schedule_interval=schedule_interval,
+        catchup=False
+    )
+
+    start = EmptyOperator(
+        task_id="start",
+        dag=dag
+    )
+
+    crawl = PythonOperator(
+        task_id="crawl",
+        python_callable=crawl_ptt_latest,
+        op_args=[base_url, ptt_board],
+        dag=dag
+    )
+
+    check_ip = PythonOperator(
+        task_id="check_ip",
+        python_callable=update_wrong_ip,
+        op_args=[ptt_board],
+        dag=dag
+    )
+
+    remove_duplicate = PythonOperator(
+        task_id="remove_duplicate",
+        python_callable=delete_duplicates,
+        op_args=[ptt_board],
+        dag=dag
+    )
+
+    end = EmptyOperator(
+        task_id="end",
+        dag=dag
+    )
+
+    # Define the task ordering
+    start >> crawl >> check_ip >> remove_duplicate >> end
+
+    return dag
+
+
+dag_gossips_history = create_dag_historical_data(dag_id="crawl_ptt_gossips_history",
+                                                 schedule_interval=timedelta(days=1),
+                                                 base_url="https://www.ptt.cc/bbs/Gossiping/index.html")
+
+dag_politic_history = create_dag_historical_data(dag_id="crawl_ptt_politic_history",
+                                                 schedule_interval=timedelta(days=1),
+                                                 base_url="https://www.ptt.cc/bbs/HatePolitics/index.html")
+
+dag_gossips_latest = create_dag_latest_data(dag_id="crawl_ptt_gossips_latest",
+                                            schedule_interval='*/10 * * * *',
+                                            base_url="https://www.ptt.cc/bbs/Gossiping/index.html")
+
+dag_politic_latest = create_dag_latest_data(dag_id="crawl_ptt_politic_latest",
+                                            schedule_interval='*/10 * * * *',
+                                            base_url="https://www.ptt.cc/bbs/HatePolitics/index.html")
