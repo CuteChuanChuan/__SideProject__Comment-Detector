@@ -12,7 +12,7 @@ db = client.ptt
 
 base_url = "https://www.ptt.cc/bbs/Gossiping/index.html"
 ptt_board = "gossip" if "Gossiping" in base_url else "politics"
-for i in range(3, 5):
+for i in range(2, 3):
     crawl_results = crawl_articles(base_url, i, 1)
     if crawl_results:
         collection = db[ptt_board]

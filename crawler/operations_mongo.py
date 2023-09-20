@@ -21,7 +21,7 @@ def article_existing(target_collection: str, search_url: str) -> bool:
     return True if db[target_collection].find_one({"article_url": search_url}) else False
 
 
-def update_article(target_collection: str, search_url: str, new_data: dict, previous_num_comments: int) -> bool:
+def update_article(target_collection: str, search_url: str, new_data: dict, previous_num_comments: int):
     """
     update article in mongodb
     :param target_collection: target collection
@@ -123,3 +123,7 @@ def delete_duplicates(target_collection: str):
 
         for id_to_delete in duplicate_ids[1:]:
             collection.delete_one({"_id": id_to_delete})
+
+
+if __name__ == "__main__":
+    delete_duplicates("gossip")
