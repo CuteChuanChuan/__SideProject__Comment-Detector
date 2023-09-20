@@ -1,5 +1,6 @@
 import bs4
 import time
+import pytz
 import logging
 import requests
 import urllib.parse
@@ -95,10 +96,12 @@ def parse_article(page_response: requests.models.Response) -> dict:
                 if month_date is not None:
                     comment_date = f"{article_time[-4:]}-{month_date[0]}-{month_date[1]}"
                     comment_time = commenter_info[-1].strip()
-
                     # to process article like: https://www.ptt.cc/bbs/Gossiping/M.1694607629.A.B47.html
                     if len(comment_time) != 5:
                         comment_time = comment_time[:5]
+                    # to process article: https://www.ptt.cc/bbs/Gossiping/M.1695070048.A.60B.html (cpmmenter: funeasy)
+                    if len(comment_time) < 5:
+                        comment_time = datetime.fromtimestamp(comments[-1]["comment_time"]).strftime('%H:%M')
                     comment_timestamp = datetime.strptime(f"{comment_date} {comment_time}", '%Y-%m-%d %H:%M').timestamp() + 59
 
             comment_content = comment.find("span", class_="push-content").get_text().strip(": ")
