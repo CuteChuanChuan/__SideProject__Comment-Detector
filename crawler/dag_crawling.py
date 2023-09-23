@@ -24,10 +24,6 @@ ua = UserAgent()
 cookies = {"from": "/bbs/Gossiping/index.html", "yes": "yes"}
 
 
-# BASE_URL = "https://www.ptt.cc/bbs/Gossiping/index.html"
-# PTT_BOARD = "gossip" if "Gossiping" in BASE_URL else "politics"
-
-
 # --- Functions related to mongodb ---
 def article_existing(search_url: str, target_collection: str) -> bool:
     """
@@ -142,7 +138,13 @@ def parse_article(page_response: requests.models.Response) -> dict:
         article_author = get_article_info(article_meta_info, 0)
         article_title = get_article_info(article_meta_info, 1)
         article_time = get_article_info(article_meta_info, 2)
-        article_timestamp = datetime.strptime(article_time, '%a %b %d %H:%M:%S %Y')
+        try:
+            article_timestamp = datetime.strptime(article_time, '%a %b %d %H:%M:%S %Y')
+        except ValueError:
+            # to handle: https://www.ptt.cc/bbs/HatePolitics/M.1694139970.A.129.html (only occurred once)
+            print("ERROR: === Article TIme -> Manually insert value ===")
+            article_time = "Fri Sep 8 10:26:08 2023"
+            article_timestamp = datetime.strptime(article_time, '%a %b %d %H:%M:%S %Y')
         localized_article_timestamp = taipei.localize(article_timestamp).timestamp()
     except IndexError as e:
         print(f"{e}: article author, title and time is not found")
@@ -213,8 +215,13 @@ def parse_article(page_response: requests.models.Response) -> dict:
                         comment_time = comment_time[:5]
                     # to process article: https://www.ptt.cc/bbs/Gossiping/M.1695070048.A.60B.html (cpmmenter: funeasy)
                     if len(comment_time) < 5:
-                        comment_time = datetime.fromtimestamp(comments[-1]["comment_time"]).strftime('%H:%M')
-                    # comment_timestamp = datetime.strptime(f"{comment_date} {comment_time}", '%Y-%m-%d %H:%M').timestamp() + 59
+                        if len(comments) != 0:
+                            comment_time = datetime.fromtimestamp(comments[-1]["comment_time"]).strftime("%H:%M")
+                        else:
+                            # to handle: https://www.ptt.cc/bbs/HatePolitics/M.1693407881.A.DDD.html
+                            # to handle: https://www.ptt.cc/bbs/Gossiping/M.1694656103.A.27D.html
+                            if article_timestamp is not None:
+                                comment_time = article_timestamp.strftime("%H:%M")
 
                     comment_timestamp = datetime.strptime(f"{comment_date} {comment_time}", '%Y-%m-%d %H:%M')
                     localized_timestamp = taipei.localize(comment_timestamp)
@@ -222,7 +229,7 @@ def parse_article(page_response: requests.models.Response) -> dict:
             comment_content = comment.find("span", class_="push-content").get_text().strip(": ")
             comments.append({"commenter_id": commenter_id,
                              "commenter_ip": commenter_ip,
-                             "comment_time": localized_timestamp.timestamp() + 59,
+                             "comment_time": localized_timestamp.timestamp() + 59 if localized_timestamp else None,
                              "comment_type": comment_type,
                              # "comment_latency": comment_timestamp - article_time_timestamp,
                              "comment_content": comment_content})
@@ -331,6 +338,9 @@ def crawl_articles(base_url: str, start_page: int, pages: int):
 
 
 def crawl_ptt_latest(base_url: str, ptt_board: str):
+    """
+
+    """
     for i in range(1, 5):
         crawl_results = crawl_articles(base_url, i, 1)
         if crawl_results:

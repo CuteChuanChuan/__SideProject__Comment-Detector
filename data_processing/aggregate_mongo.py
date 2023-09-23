@@ -13,57 +13,6 @@ client = MongoClient(uri)
 db = client.ptt
 
 
-def count_articles(target_collection: str) -> int:
-    """
-    count number of articles in mongodb
-    :param target_collection: target collection
-    :return: number of articles
-    """
-    return db[target_collection].count_documents({})
-
-
-def count_comments(target_collection: str) -> int:
-    """
-    count number of articles in mongodb
-    :param target_collection: target collection
-    :return: number of articles
-    """
-    num_comments = 0
-    cursor = db[target_collection].find({}, {"article_data.num_of_comment": 1})
-    cursor.batch_size(BATCH_SIZE)
-    for document in cursor:
-        article_data = document.get("article_data", {})
-        comments = article_data.get("num_of_comment", 0)
-        num_comments += comments
-    return num_comments
-
-
-def count_accounts(target_collection: str) -> int:
-    """
-    count number of unique accounts in mongodb
-    :param target_collection: target collection
-    :return: number of articles
-    """
-    unique_accounts = set()
-    cursor = db[target_collection].find({}, {"article_data.author": 1})
-    cursor.batch_size(BATCH_SIZE)
-    for document in cursor:
-        article_data = document.get("article_data", {})
-        unique_accounts.add(article_data["author"])
-    pipeline = [
-        {"$unwind": "$article_data.comments"},
-        {"$group": {"_id": None,
-                    "unique_commenter_ids": {"$addToSet": "$article_data.comments.commenter_id"}}}
-    ]
-
-    result = list(db[target_collection].aggregate(pipeline))
-    unique_commenter_ids = result[0]['unique_commenter_ids'] if result else []
-    for commenter in unique_commenter_ids:
-        unique_accounts.add(commenter)
-
-    return len(unique_accounts)
-
-
 def extract_all_authors_accounts_and_ip(target_collection: str):
     """
     extract all accounts and ip addresses of article author
