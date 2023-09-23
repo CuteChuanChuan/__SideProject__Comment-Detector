@@ -1,231 +1,236 @@
-import os
 import dash
-import jieba
 import jieba.analyse
-import networkx as nx
-from py2neo import Graph
+from dash import dash_table
 from dotenv import load_dotenv
-from wordcloud import WordCloud
-import plotly.graph_objects as go
+from flask_caching import Cache
 from dash import dcc, html, Input, Output
-from pymongo.mongo_client import MongoClient
-from data_processing.aggregate_mongo import count_articles, count_comments, count_accounts
+from utils_dashboard.func_update_crawling_data import update_layout
+from utils_dashboard.plot_generate_wordcloud import wordcloud_graph
+from utils_dashboard.plot_generate_heatmap import heatmap_commenter_activities
+from utils_dashboard.func_retrieve_top_n_breaking_news import update_breaking_news
+from utils_dashboard.config_dashboard import neo4j_url, neo4j_user, neo4j_password
+from utils_dashboard.plot_generate_barchart_keywords import generate_barchart_keywords
+from utils_dashboard.plot_generate_network_graph_one_account import network_graph_one_account
 
 load_dotenv(verbose=True)
 
-uri = os.getenv("ATLAS_URI", "None")
-client = MongoClient(uri)
-db = client[os.getenv("ATLAS_DATABASE", "ptt")]
-DICT_FILE = "tc_dict.txt"
-STOP_FILE = "stopwords.txt"
-TC_FONT_PATH = "NotoSerifTC-Regular.otf"
+DICT_FILE = "utils_dashboard/tc_dict.txt"
+STOP_FILE = "utils_dashboard/stopwords.txt"
+TC_FONT_PATH = "utils_dashboard/NotoSerifTC-Regular.otf"
 
 jieba.set_dictionary(DICT_FILE)
 jieba.analyse.set_stop_words(STOP_FILE)
 
+NUM_NEWS = 10
+TIMEOUT = 40
+
+external_stylesheets = ["https://codepen.io/chriddyp/pen/bWLwgP.css"]
+
 
 def create_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
-    graph = Graph(uri=f"{os.getenv('NEO4J_URL')}:7687",
-                  auth=(os.getenv("NEO4J_USERNAME", "YourAccount"), os.getenv("NEO4J_PASSWORD", "YourPassword")))
-
-    app = dash.Dash(__name__, requests_pathname_prefix=requests_pathname_prefix)
+    app = dash.Dash(
+        __name__,
+        requests_pathname_prefix=requests_pathname_prefix,
+        external_stylesheets=external_stylesheets,
+    )
     app.scripts.config.serve_locally = True
-    dcc._js_dist[0]['external_url'] = 'https://cdn.plot.ly/plotly-basic-latest.min.js'
-
-    app.layout = html.Div([
-        dcc.Interval(
-            id='interval-component',
-            interval=3*1000,  # in milliseconds
-            n_intervals=0
-        ),
-        html.H1('PTT Comment Detector', style={'textAlign': 'center'}),
-        html.Div(id='live-update-text'),
-        dcc.Input(id='account-id', type='text', value='', placeholder='Enter Account ID'),
-        html.Button('Submit', id='submit-button'),
-        html.Div(id='graph-data', style={'display': 'none'}),
-        dcc.Graph(id='network-graph', style={'display': 'none'}),
-        html.Img(id='wordcloud-graph', style={'display': 'none'})
-    ])
-
-    @app.callback(
-        Output('live-update-text', 'children'),
-        [Input('interval-component', 'n_intervals')]
+    cache = Cache(
+        app.server,
+        config={
+            "CACHE_TYPE": "filesystem",
+            "CACHE_DIR": "cache-directory",
+            "CACHE_DEFAULT_TIMEOUT": TIMEOUT,
+            "CACHE_THRESHOLD": 500,
+        },
     )
-    def update_layout(n_intervals):
-        total_articles = count_articles("gossip") + count_articles("politics")
-        total_comments = count_comments("gossip") + count_comments("politics")
-        total_accounts = count_accounts("gossip") + count_accounts("politics")
+    app.config.suppress_callback_exceptions = True
+    dcc._js_dist[0]["external_url"] = "https://cdn.plot.ly/plotly-basic-latest.min.js"
 
-        return [
-            html.Div([
-                html.H4('Crawled Article Count', style={'textAlign': 'center'}),
-                html.H1(f'{total_articles}', style={'textAlign': 'center'}),
-                html.H5('Articles', style={'textAlign': 'center'})
-            ], style={'width': '33%', 'display': 'inline-block'}),
-
-            html.Div([
-                html.H4('Crawled Comment Count', style={'textAlign': 'center'}),
-                html.H1(f'{total_comments}', style={'textAlign': 'center'}),
-                html.H5('Comments', style={'textAlign': 'center'})
-            ], style={'width': '33%', 'display': 'inline-block'}),
-
-            html.Div([
-                html.H4('Crawled Account Count', style={'textAlign': 'center'}),
-                html.H1(f'{total_accounts}', style={'textAlign': 'center'}),
-                html.H5('Accounts', style={'textAlign': 'center'})
-            ], style={'width': '33%', 'display': 'inline-block'}),
+    app.layout = html.Div(
+        [
+            html.H1("PTT Comment Detector", style={"textAlign": "center"}),
+            html.Hr(),
+            html.Div(
+                children=[
+                    dcc.Interval(
+                        id="interval-component", interval=3 * 1000, n_intervals=0
+                    ),
+                    html.Div(id="live-update-text"),
+                ]
+            ),
+            dcc.Dropdown(
+                id="dropdown",
+                options=[{"label": "昨天", "value": 1},
+                         {"label": "過去三天", "value": 3},
+                         {"label": "過去一週", "value": 7}],
+                value=1,
+            ),
+            html.Div(children=[
+                dcc.Graph(id="gossips-title-keyword-barchart", style={"width": "25%", "display": "none"}),
+                dcc.Graph(id="gossips-comments-keyword-barchart", style={"width": "25%", "display": "none"}),
+                dcc.Graph(id="politic-title-keyword-barchart", style={"width": "25%", "display": "none"}),
+                dcc.Graph(id="politic-comments-keyword-barchart", style={"width": "25%", "display": "none"})
+            ]),
+            html.Hr(),
+            html.Div(
+                children=[
+                    html.H3(f"八卦版爆卦文章 - 留言數量前 {NUM_NEWS} 名"),
+                    dash_table.DataTable(
+                        id="gossips-news",
+                        style_table={"width": "1025px"},
+                        style_cell={
+                            "height": "auto",
+                            "width": "150px",
+                            "minWidth": "30px",
+                            "maxWidth": "180px",
+                            "whiteSpace": "normal",
+                        },
+                        style_header={"textAlign": "center"},
+                        style_cell_conditional=[
+                            {
+                                "if": {"column_id": "文章標題"},
+                                "width": "500px",
+                                "textAlign": "left",
+                                "height": "auto",
+                            },
+                            {
+                                "if": {"column_id": "留言數"},
+                                "width": "30px",
+                                "textAlign": "right",
+                                "height": "auto",
+                            },
+                            {
+                                "if": {"column_id": "文章連結"},
+                                "width": "500px",
+                                "textAlign": "left",
+                                "height": "auto",
+                            },
+                        ],
+                        columns=[
+                            {"name": i, "id": i, "presentation": "markdown"}
+                            for i in update_breaking_news("gossip").columns
+                        ],
+                        markdown_options={"html": True},
+                        data=None,
+                    ),
+                    # dash_table.DataTable(id="politic-news",
+                    #                      style_cell={'textAlign': 'left', 'width': '49%', 'height': 'auto',
+                    #                                  'minWidth': '180px', 'maxWidth': '180px',
+                    #                                  'whiteSpace': 'normal'
+                    #                                  },
+                    #                      columns=[{"name": i, "id": i} for i in update_breaking_news("politics").columns],
+                    #                      data=None),
+                    dcc.Interval(
+                        id="interval-component-table", interval=20 * 1000, n_intervals=0
+                    ),
+                ]
+            ),
+            html.Br(),
+            dcc.Input(
+                id="account-id", type="text", value="", placeholder="Enter Account ID"
+            ),
+            html.Button("Submit", id="submit-button-id"),
+            html.Div(id="graph-data", style={"display": "none"}),
+            dcc.Graph(id="network-graph", style={"display": "none"}),
+            html.Div(
+                children=[
+                    html.Img(
+                        id="wordcloud-graph", style={"width": "49%", "display": "none"}
+                    ),
+                    dcc.Graph(
+                        id="activity-graph", style={"width": "49%", "display": "none"}
+                    ),
+                ]
+            ),
         ]
-
+    )
 
     @app.callback(
-        [Output('network-graph', 'figure'),
-         Output('network-graph', 'style')],
-        [Input('submit-button', 'n_clicks')],
-        [dash.dependencies.State('account-id', 'value')]
+        Output("live-update-text", "children"),
+        [Input("interval-component", "n_intervals")],
     )
-    def load_graph(n_clicks, account_id):
-        if n_clicks is None or not account_id:
-            return dash.no_update, {'display': 'none'}
+    @cache.memoize(timeout=TIMEOUT)
+    def update_crawling_data(n_intervals):
+        updated_info = update_layout()
+        return updated_info
 
-        query = (f"MATCH (a1:Article {{article: 'https://www.ptt.cc/bbs/Gossiping/M.1694741448.A.CCB.html'}}) "
-                 f"MATCH (commenter:Commenter_id)-[:RESPONDS]->(a1) "
-                 f"WHERE commenter.id = '{account_id}' "
-                 f"WITH commenter, a1 "
-                 f"MATCH (a2:Article {{article: 'https://www.ptt.cc/bbs/Gossiping/M.1694956794.A.F1A.html'}}) "
-                 f"MATCH (commenter)-[:RESPONDS]->(a2) "
-                 f"MATCH (a3:Article {{article: 'https://www.ptt.cc/bbs/Gossiping/M.1694952559.A.90D.html'}}) "
-                 f"MATCH (commenter)-[:RESPONDS]->(a3) "
-                 f"MATCH (a4:Article {{article: 'https://www.ptt.cc/bbs/Gossiping/M.1694846678.A.101.html'}}) "
-                 f"MATCH (commenter)-[:RESPONDS]->(a4) "
-                 f"MATCH (a5:Article {{article: 'https://www.ptt.cc/bbs/Gossiping/M.1694829290.A.9F1.html'}}) "
-                 f"MATCH (commenter)-[:RESPONDS]->(a5) "
-                 f"MATCH (commenter)-[:USES]->(ip:Commenter_ip) "
-                 f"RETURN *")
-        results = graph.run(query).data()
-
-        G = nx.Graph()
-        for record in results:
-            a1 = record['a1']['article']
-            a2 = record['a2']['article']
-            a3 = record['a3']['article']
-            a4 = record['a4']['article']
-            a5 = record['a5']['article']
-            commenter = record['commenter']['id']
-            ip = record['ip']['ip']
-
-            G.add_node(a1, type='Article')
-            G.add_node(a2, type='Article')
-            G.add_node(a3, type='Article')
-            G.add_node(a4, type='Article')
-            G.add_node(a5, type='Article')
-            G.add_node(commenter, type='Commenter')
-            G.add_node(ip, type='IP')
-            G.add_edge(a1, commenter, type='RESPONDS')
-            G.add_edge(a2, commenter, type='RESPONDS')
-            G.add_edge(a3, commenter, type='RESPONDS')
-            G.add_edge(a4, commenter, type='RESPONDS')
-            G.add_edge(a5, commenter, type='RESPONDS')
-            G.add_edge(commenter, ip, type='USES')
-
-        pos = nx.spring_layout(G)
-
-        colors = [
-            '#1f78b4' if G.nodes[node]['type'] == 'Article' else '#33a02c' if G.nodes[node]['type'] == 'IP' else '#fb9a99'
-            for node in G.nodes]
-
-        edge_x = []
-        edge_y = []
-        for edge in G.edges():
-            x0, y0 = pos[edge[0]]
-            x1, y1 = pos[edge[1]]
-            edge_x.extend([x0, x1, None])
-            edge_y.extend([y0, y1, None])
-
-        edge_trace = go.Scatter(
-            x=edge_x, y=edge_y,
-            mode='lines',
-            line=dict(width=0.5, color='#888'),
-        )
-
-        node_x = [pos[k][0] for k in pos]
-        node_y = [pos[k][1] for k in pos]
-
-        node_trace = go.Scatter(
-            x=node_x, y=node_y,
-            mode='markers',
-            marker=dict(
-                showscale=False,
-                size=10,
-                color=colors,  # Node color changes based on the type
-                opacity=0.8
-            )
-        )
-
-        figure = go.Figure(data=[edge_trace, node_trace],
-                           layout=go.Layout(
-                               showlegend=False,
-                               hovermode='closest',
-                               margin=dict(b=0, l=0, r=0, t=0),
-                               xaxis=dict(showgrid=False, zeroline=False),
-                               yaxis=dict(showgrid=False, zeroline=False))
-                           )
-
-        annotations = []
-        for node, (x, y) in pos.items():
-            node_type = G.nodes[node]['type']
-            if node_type == 'Article':
-                display_text = node
-            elif node_type == 'IP':
-                display_text = node
-            elif node_type == 'Commenter':
-                display_text = node
-            else:
-                display_text = node_type
-            annotations.append(
-                go.layout.Annotation(
-                    x=x,
-                    y=y,
-                    xref="x",
-                    yref="y",
-                    text=display_text,
-                    showarrow=False,
-                    font=dict(size=10)
-                )
-            )
-        figure.update_layout(annotations=annotations)
-        return figure, {'display': 'block'}
-
+    @app.callback([Output("gossips-title-keyword-barchart", "figure"),
+                   Output("gossips-title-keyword-barchart", "style"),
+                   Output("gossips-comments-keyword-barchart", "figure"),
+                   Output("gossips-comments-keyword-barchart", "style"),
+                   Output("politic-title-keyword-barchart", "figure"),
+                   Output("politic-title-keyword-barchart", "style"),
+                   Output("politic-comments-keyword-barchart", "figure"),
+                   Output("politic-comments-keyword-barchart", "style")
+                   ],
+                  [Input('dropdown', 'value')])
+    @cache.memoize(timeout=24*60*60)
+    def generate_barchart_keywords_for_boards(selected_value):
+        gossips_title_data = generate_barchart_keywords(target_collection="gossip", n_days=selected_value, source="標題")
+        gossips_comments_data = generate_barchart_keywords(target_collection="gossip", n_days=selected_value, source="留言")
+        politic_title_data = generate_barchart_keywords(target_collection="politics", n_days=selected_value, source="標題")
+        politic_comments_data = generate_barchart_keywords(target_collection="politics", n_days=selected_value, source="留言")
+        return (gossips_title_data, {"width": "25%", "display": "inline-block"},
+                gossips_comments_data, {"width": "25%", "display": "inline-block"},
+                politic_title_data, {"width": "25%", "display": "inline-block"},
+                politic_comments_data, {"width": "25%", "display": "inline-block"})
 
     @app.callback(
-        [Output('wordcloud-graph', 'src'),
-         Output('wordcloud-graph', 'style')],
-        [Input('submit-button', 'n_clicks')],
-        [dash.dependencies.State('account-id', 'value')]
+        Output("gossips-news", "data"),
+        [Input("interval-component-table", "n_intervals")],
     )
-    def wordcloud_graph(n_clicks, account_id):
+    @cache.memoize(timeout=TIMEOUT)
+    def update_gossips_news(n_intervals):
+        return update_breaking_news(ptt_board="gossip", num_news=NUM_NEWS).to_dict(
+            "records"
+        )
+
+    @app.callback(
+        [Output("network-graph", "figure"), Output("network-graph", "style")],
+        [Input("submit-button-id", "n_clicks")],
+        [dash.dependencies.State("account-id", "value")],
+    )
+    def generate_network_graph_one_account(n_clicks, account_id):
         if n_clicks is None or not account_id:
-            return dash.no_update, {'display': 'none'}
+            return dash.no_update, {"display": "none"}
 
-        gossip_collection, politics_collection, all_comments = db["gossip"], db["politics"], []
+        fig = network_graph_one_account(account_id=account_id)
+        return fig, {"display": "block"}
 
-        gossip_cursor = gossip_collection.find({"article_data.comments.commenter_id": account_id},
-                                               {'article_data.comments': 1, "article_url": 1, "_id": 0})
-        politic_cursor = politics_collection.find({"article_data.comments.commenter_id": account_id},
-                                                  {'article_data.comments': 1, "article_url": 1, "_id": 0})
+    @app.callback(
+        [Output("wordcloud-graph", "src"), Output("wordcloud-graph", "style")],
+        [Input("submit-button-id", "n_clicks")],
+        [dash.dependencies.State("account-id", "value")],
+    )
+    def generate_wordcloud_graph(n_clicks, account_id):
+        if n_clicks is None or not account_id:
+            return dash.no_update, {"display": "none"}
 
-        for article in gossip_cursor:
-            for comment in article["article_data"]["comments"]:
-                if comment["commenter_id"] == account_id:
-                    all_comments.append(comment["comment_content"])
+        fig = wordcloud_graph(account_id=account_id)
+        return fig, {"width": "49%", "display": "inline-block"}
 
-        for article in politic_cursor:
-            for comment in article["article_data"]["comments"]:
-                if comment["commenter_id"] == account_id:
-                    all_comments.append(comment["comment_content"])
+    @app.callback(
+        [Output("activity-graph", "figure"), Output("activity-graph", "style")],
+        [Input("submit-button-id", "n_clicks")],
+        [dash.dependencies.State("account-id", "value")],
+    )
+    def generate_heatmap_commenter_activities(n_clicks, account_id: str):
+        if n_clicks is None or not account_id:
+            return dash.no_update, {"display": "none"}
 
-        wc = WordCloud(font_path=TC_FONT_PATH, margin=2, background_color="white", max_font_size=150,
-                       width=980, height=600).generate(" ".join(all_comments))
+        fig = heatmap_commenter_activities(account_id=account_id)
+        return fig, {"width": "49%", "display": "inline-block"}
 
-        return wc.to_image(), {'display': 'block'}
+    # @app.callback(
+    #     Output('neovis-container', 'children'),
+    #     Input('interval-component', 'n_intervals')
+    # )
+    # def update_graph(n_intervals):
+    #     return html.Div([
+    #         html.Div(id="viz", style={"width": "800px", "height": "600px"}),
+    #         html.Script(src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"),
+    #         html.Script(src="https://cdn.jsdelivr.net/npm/neovis.js@1.5.0/dist/neovis.js"),
+    #         html.Script(neovis_script)
+    #     ])
 
     return app

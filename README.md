@@ -54,9 +54,17 @@ Personal Project (AppWorks School #21 Data Engineering)
 3. [Getting Started with the MongoDB Kafka Source Connector](https://www.mongodb.com/docs/kafka-connector/master/tutorials/source-connector/)
 
 
-## <u>Dashboard: Streamlit</u>
+## <u>Dashboard: Plotly Dash</u>
 ### Objective: Show ETL results
-### URL: http://3.106.78.149:8501/
+### URL: http://3.106.78.149:8000/
+### Why use this?
+
+## <u>Middleware - WSGI (Web Server Gateway Interface) server: gunicorn</u>
+### Objective: 
+### Why use this?
+
+## <u>Middleware - ASGI (Asynchronous Server Gateway Interface) server: uvicorn</u>
+### Objective: 
 ### Why use this?
 
 ## <u>Process manager: pm2</u>
@@ -70,7 +78,7 @@ Personal Project (AppWorks School #21 Data Engineering)
 3. creating .sh: ```vim start_streamlit.sh```
     ```shell
     #!/bin/bash
-    streamlit run dashboard.py
+    gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker
     ```
 4. changing .sh permission: ```chmod +x start_streamlit.sh```
 5. starting virtual env: ```source ./crawler/bin/activate```
