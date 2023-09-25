@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 import plotly.graph_objects as go
 from dash import dcc, html, Input, Output
 from plotly.graph_objs import Scatter3d, Line
-from data_processing.aggregate_mongo import count_articles, count_comments, count_accounts
+from data_processing.utils_mongo import count_articles, count_comments, count_accounts
 
 load_dotenv(verbose=True)
 
