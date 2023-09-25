@@ -3,9 +3,9 @@ import time
 from dotenv import load_dotenv
 from py2neo import Graph, Node, Relationship
 from py2neo.bulk import merge_nodes, merge_relationships
-from aggregate_mongo import (extract_all_authors_accounts_and_ip,
-                             extract_all_commenters_accounts_and_ip,
-                             retrieve_article)
+from utils_mongo import (extract_all_authors_accounts_and_ip,
+                         extract_all_commenters_accounts_and_ip,
+                         retrieve_article)
 
 load_dotenv(verbose=True)
 

@@ -68,6 +68,22 @@ def retrieve_article(target_collection: str, search_url: str) -> dict:
     return db[target_collection].find_one({"article_url": search_url})
 
 
+def get_all_article_filtered_by_keyword(target_collection: str, key_word: str, num_articles: int) -> list[tuple]:
+    pipelines = [
+        {"$match": {"article_data.title": {"$regex": key_word, "$options": "i"}}},
+        {"$sort": {"article_data.num_of_comments": -1}},
+        {"$limit": num_articles},
+        {"$project": {"_id": 0, "article_url": 1, "article_data": 1}}
+    ]
+    all_article_data = []
+    mongo_cursor = db[target_collection].aggregate(pipelines)
+    for _ in mongo_cursor:
+        all_article_data.append((_["article_url"], _["article_data"]["title"], _["article_data"]["author"],
+                                 _["article_data"]["ipaddress"], _["article_data"]["time"],
+                                 _["article_data"]["num_of_comment"]))
+    return all_article_data
+
+
 if __name__ == "__main__":
     start = time.time()
     extract_all_commenters_accounts_and_ip(target_collection="gossip")

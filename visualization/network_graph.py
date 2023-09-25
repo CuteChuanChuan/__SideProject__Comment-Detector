@@ -3,7 +3,7 @@ import urllib.request
 import igraph as ig
 import networkx as nx
 import plotly.express as px
-from data_processing.aggregate_mongo import retrieve_article
+from data_processing.utils_mongo import retrieve_article
 
 article_a = retrieve_article(target_collection="gossip",
                              search_url="https://www.ptt.cc/bbs/Gossiping/M.1694741448.A.CCB.html")

@@ -2,7 +2,7 @@ import os
 from typing import Optional
 from dotenv import load_dotenv
 from py2neo import Graph, Node, Relationship
-from aggregate_mongo import extract_all_authors_accounts_and_ip
+from utils_mongo import extract_all_authors_accounts_and_ip
 
 load_dotenv(verbose=True)
 

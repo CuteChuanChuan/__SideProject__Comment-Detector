@@ -15,7 +15,7 @@ def extract_top_n_keywords(text_data: list[dict], n_keywords: int) -> list[tuple
     :param text_data: text data
     :param n_keywords: number of keywords
     """
-    unwanted_words = ["XD"]  # Add any other words you want to exclude
+    unwanted_words = ["XD"]
     for word in unwanted_words:
         jieba.del_word(word)
 
@@ -24,7 +24,7 @@ def extract_top_n_keywords(text_data: list[dict], n_keywords: int) -> list[tuple
     keywords_with_weights = jieba.analyse.extract_tags(segmented_text, topK=n_keywords, withWeight=True)
     return keywords_with_weights
 
-
+#
 # if __name__ == '__main__':
 #     yesterday_data_title = get_past_n_days_article_title("gossip", 1)
 #     yesterday_data_comments = get_past_n_days_comments("gossip", 1)
