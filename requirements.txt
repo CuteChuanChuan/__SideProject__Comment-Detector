@@ -22,8 +22,6 @@ backoff==2.2.1
 beautifulsoup4==4.12.2
 black==23.9.1
 blinker==1.6.2
-bokeh==3.2.2
-bokeh-wordcloud2==0.9.1
 cachelib==0.9.0
 cachetools==5.3.1
 cattrs==23.1.2
@@ -70,11 +68,6 @@ frozenlist==1.4.0
 fsspec==2023.9.1
 gast==0.4.0
 gensim==4.3.2
-google-auth==2.23.0
-google-auth-oauthlib==1.0.0
-google-pasta==0.2.0
-google-re2==1.1
-googleapis-common-protos==1.60.0
 graphviz==0.20.1
 grpcio==1.58.0
 gunicorn==21.2.0
@@ -197,9 +190,6 @@ tabulate==0.9.0
 tenacity==8.2.3
 tensorboard==2.13.0
 tensorboard-data-server==0.7.1
-tensorflow==2.13.0
-tensorflow-estimator==2.13.0
-tensorflow-macos==2.13.0
 termcolor==2.3.0
 text-unidecode==1.3
 texttable==1.6.7

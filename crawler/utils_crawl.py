@@ -21,7 +21,11 @@ def check_article_having_data(target_collection: str, search_url: str) -> bool:
     :param search_url: article url
     :return: True if article data exists, False otherwise
     """
-    return True if db[target_collection].find_one({"article_url": search_url})["article_data"] else False
+    return (
+        True
+        if db[target_collection].find_one({"article_url": search_url})["article_data"]
+        else False
+    )
 
 
 def delete_article(target_collection: str, target_url: str):
@@ -31,4 +35,3 @@ def delete_article(target_collection: str, target_url: str):
     :param target_url: article url
     """
     db[target_collection].delete_one({"article_url": target_url})
-
