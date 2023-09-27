@@ -1,10 +1,10 @@
 import enum
 import uvicorn
-from dash_app import create_dash_app
+from dash_app_overview import create_overview_dash_app
+from dash_app_detail import create_detail_dash_app
 from fastapi import FastAPI, Query
 from fastapi.middleware.wsgi import WSGIMiddleware
-import utils_mongodb as op_accounts
-
+from utils_dashboard import utils_mongodb as op_accounts
 
 app = FastAPI()
 
@@ -35,8 +35,11 @@ def get_commenter_articles(
     }
 
 
-dash_app = create_dash_app(requests_pathname_prefix="/dash/")
-app.mount("/dash", WSGIMiddleware(dash_app.server))
+overview_app = create_overview_dash_app(requests_pathname_prefix="/overview/")
+app.mount("/overview", WSGIMiddleware(overview_app.server))
+
+detail_app = create_detail_dash_app(requests_pathname_prefix="/detail/")
+app.mount("/detail", WSGIMiddleware(detail_app.server))
 
 
 if __name__ == "__main__":

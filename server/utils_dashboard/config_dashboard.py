@@ -27,9 +27,9 @@ client = MongoClient(uri)
 db = client.ptt
 openai.api_key = os.getenv("OPENAI_KEY")
 
-neo4j_url = os.environ.get("NEO4J_URL", "bolt://localhost:7687")
-neo4j_user = os.environ.get("NEO4J_USER", "neo4j")
-neo4j_password = os.environ.get("NEO4J_PASSWORD", "password")
+# neo4j_url = os.environ.get("NEO4J_URL", "bolt://localhost:7687")
+# neo4j_user = os.environ.get("NEO4J_USER", "neo4j")
+# neo4j_password = os.environ.get("NEO4J_PASSWORD", "password")
 
 
 def chatgpt_analyze_topic(prompt):

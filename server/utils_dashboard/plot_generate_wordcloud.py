@@ -34,6 +34,8 @@ def wordcloud_graph(account_id):
             if comment["commenter_id"] == account_id:
                 all_comments.append(comment["comment_content"])
 
+    comments_cleaned = [comment for comment in all_comments if "https://" not in comment]
+
     wc = WordCloud(
         font_path=TC_FONT_PATH,
         margin=2,
@@ -41,10 +43,10 @@ def wordcloud_graph(account_id):
         max_font_size=150,
         width=980,
         height=600,
-    ).generate(" ".join(all_comments))
+    ).generate(" ".join(comments_cleaned))
 
     return wc.to_image()
 
 
 if __name__ == "__main__":
-    wordcloud_graph(account_id="ZhanPeng")
+    wordcloud_graph(account_id="coffee112")

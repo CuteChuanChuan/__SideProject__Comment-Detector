@@ -79,5 +79,5 @@ def heatmap_commenter_activities(account_id: str):
 
 if __name__ == "__main__":
     start = time.time()
-    heatmap_commenter_activities(account_id="Healine")
+    heatmap_commenter_activities(account_id="coffee112").show()
     print(f"Time: {time.time() - start}")

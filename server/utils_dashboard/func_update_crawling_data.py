@@ -1,10 +1,8 @@
-import time
 from dash import html
-from utils_mongodb import count_articles, count_comments, count_accounts
+from .utils_mongodb import count_articles, count_comments, count_accounts
 
 
 def update_layout():
-    start = time.time()
     total_articles = count_articles("gossip") + count_articles("politics")
     total_comments = count_comments("gossip") + count_comments("politics")
     total_accounts = count_accounts("gossip") + count_accounts("politics")

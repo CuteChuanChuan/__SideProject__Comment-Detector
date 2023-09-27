@@ -33,8 +33,10 @@ class PostgresConfig:
         self.password = os.getenv("POSTGRES_PASSWORD")
         self.host = os.getenv("POSTGRES_HOST")
         self.port = os.getenv("POSTGRES_PORT")
-        self.config = {"database": self.database,
-                       "user": self.user,
-                       "password": self.password,
-                       "host": self.host,
-                       "port": self.port}
+        self.config = {
+            "database": self.database,
+            "user": self.user,
+            "password": self.password,
+            "host": self.host,
+            "port": self.port,
+        }
