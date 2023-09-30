@@ -269,11 +269,18 @@ def parse_article(page_response: requests.models.Response) -> dict:
                             # to handle: https://www.ptt.cc/bbs/Gossiping/M.1694656103.A.27D.html
                             if article_timestamp is not None:
                                 comment_time = article_timestamp.strftime("%H:%M")
-
-                    comment_timestamp = datetime.strptime(
-                        f"{comment_date} {comment_time}", "%Y-%m-%d %H:%M"
-                    )
-                    localized_timestamp = taipei.localize(comment_timestamp)
+                    # to handle: https://www.ptt.cc/bbs/Gossiping/M.1692381678.A.441.html
+                    if comment_time == "2023-08-19 02:l1":
+                        comment_time = "2023-08-19 02:10"
+                    try:
+                        comment_timestamp = datetime.strptime(
+                            f"{comment_date} {comment_time}", "%Y-%m-%d %H:%M"
+                        )
+                        localized_timestamp = taipei.localize(comment_timestamp)
+                    except ValueError as e:
+                        # to handle: https://www.ptt.cc/bbs/HatePolitics/M.1574178562.A.4EE.html
+                        print(f"{e}")
+                        continue
 
             comment_content = (
                 comment.find("span", class_="push-content").get_text().strip(": ")
