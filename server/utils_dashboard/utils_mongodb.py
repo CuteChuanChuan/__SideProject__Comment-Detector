@@ -2,14 +2,17 @@
 This module contains utility functions for mongodb to analyze data and make graphs.
 """
 import pytz
-import pprint
 import pandas as pd
-from collections import defaultdict
+from uuid import uuid4
+from itertools import combinations
+from typing import Tuple, Any
 from datetime import datetime, timedelta
 from .config_dashboard import db
 
 
 BATCH_SIZE = 10000
+NUM_ARTICLES = 100
+
 current_timezone = pytz.timezone("Asia/Taipei")
 current_time = datetime.now(current_timezone).replace(
     hour=0, minute=0, second=0, microsecond=0
@@ -337,48 +340,153 @@ def convert_commenters_metadata_to_dataframe(commenter_metadata: dict) -> pd.Dat
 
 
 def extract_top_freq_commenter_id(meta_df: pd.DataFrame, num_commenters: int) -> list:
-    return meta_df.sort_values("freq", ascending=False).head(num_commenters)["commenter_id"].to_list()
+    return (
+        meta_df.sort_values("freq", ascending=False)
+        .head(num_commenters)["commenter_id"]
+        .to_list()
+    )
 
 
 def extract_top_agree_commenter_id(meta_df: pd.DataFrame, num_commenters: int) -> list:
-    return meta_df.sort_values("agree", ascending=False).head(num_commenters)["commenter_id"].to_list()
+    return (
+        meta_df.sort_values("agree", ascending=False)
+        .head(num_commenters)["commenter_id"]
+        .to_list()
+    )
 
 
-def extract_top_disagree_commenter_id(meta_df: pd.DataFrame, num_commenters: int) -> list:
-    return meta_df.sort_values("disagree", ascending=False).head(num_commenters)["commenter_id"].to_list()
+def extract_top_disagree_commenter_id(
+    meta_df: pd.DataFrame, num_commenters: int
+) -> list:
+    return (
+        meta_df.sort_values("disagree", ascending=False)
+        .head(num_commenters)["commenter_id"]
+        .to_list()
+    )
 
 
-def extract_top_short_comment_latency_commenter_id(meta_df: pd.DataFrame, num_commenters: int) -> list:
-    return meta_df.sort_values("time_avg", ascending=True).head(num_commenters)["commenter_id"].to_list()
+def extract_top_short_comment_latency_commenter_id(
+    meta_df: pd.DataFrame, num_commenters: int
+) -> list:
+    return (
+        meta_df.sort_values("time_avg", ascending=True)
+        .head(num_commenters)["commenter_id"]
+        .to_list()
+    )
 
 
-def check_commenter_in_article_filter_by_article_url(target_collection: str, commenter_id: str, article_url: str) -> bool:
+def check_commenter_in_article_filter_by_article_url(
+    target_collection: str, commenter_id: str, article_url: str
+) -> bool:
     query = {
         "article_url": article_url,
-        "article_data.comments": {"$elemMatch": {"commenter_id": commenter_id}}
+        "article_data.comments": {"$elemMatch": {"commenter_id": commenter_id}},
     }
     return db[target_collection].find_one(query) is not None
 
 
+# Section: functions needed for network graph
+# Rationale: (1) filter articles by keyword and sort by number of comments
+# Rationale: (2) get top n commenters with 2 types of comments
+# Rationale: (3) get all combinations of the top n commenters
+# Rationale: (4) compute the concurrency of each combination -> divide by number of articles
+# Rationale: (5) compute each commenter's response latency -> draw graph
+def query_articles_store_temp_collection(
+    keyword: str, target_collection: str
+) -> Tuple[str, str, str]:
+    if target_collection not in ["gossip", "politics"]:
+        raise ValueError("Invalid target collection (only gossip, politics)")
+    collection_name = f"concurrency_collection_{keyword}_{uuid4()}"
+    pipeline = [
+        {"$match": {"article_data.title": {"$regex": keyword, "$options": "i"}}},
+        {"$sort": {"article_data.num_of_comment": -1}},
+        {"$limit": NUM_ARTICLES},
+        {"$out": collection_name},
+    ]
+
+    db[target_collection].aggregate(pipeline)
+    return collection_name, target_collection, keyword
+
+
+def list_top_n_commenters_filtered_by_comment_type(
+    temp_collection: str, comment_type: str, num_commenters: int = 20
+) -> tuple[list[Any], int]:
+    """
+    list top n commenters and number of comments filtered by comment type
+    :param temp_collection: temporary collection
+    :param comment_type: comment type  (either '推' or '噓')
+    :param num_commenters: how many commenters to return
+    :return: list of top n commenters and number of comments filtered by comment type
+    """
+    if comment_type not in ["推", "噓"]:
+        raise ValueError("Invalid comment type (only accept '推' or '噓')")
+
+    pipeline = [
+        {"$unwind": "$article_data.comments"},
+        {"$match": {"article_data.comments.comment_type": comment_type}},
+        {
+            "$group": {
+                "_id": "$article_data.comments.commenter_id",
+                "article_ids": {"$addToSet": "$_id"},
+            }
+        },
+        {"$project": {"count": {"$size": "$article_ids"}}},
+        {"$sort": {"count": -1}},
+        {"$limit": num_commenters},
+    ]
+
+    results = db[temp_collection].aggregate(pipeline)
+    return list(results), num_commenters
+
+
+def generate_all_combinations(commenters: list[dict]) -> list[tuple]:
+    """
+    generate all combinations of commenters
+    :param commenters: list of commenters with element format "{'_id': 'coffee112', 'count': 119}"
+    """
+    commenters = [commenter["_id"] for commenter in commenters]
+    return list(combinations(commenters, 2))
+
+
+def compute_concurrency(ids: tuple, temp_collection: str, comment_type: str):
+    if comment_type not in ["推", "噓"]:
+        raise ValueError("Invalid comment type (only accept '推' or '噓')")
+    pipeline = [
+        {
+            "$match": {
+                "$and": [
+                    {
+                        "article_data.comments": {
+                            "$elemMatch": {
+                                "commenter_id": ids[0],
+                                "comment_type": comment_type,
+                            }
+                        }
+                    },
+                    {
+                        "article_data.comments": {
+                            "$elemMatch": {
+                                "commenter_id": ids[1],
+                                "comment_type": comment_type,
+                            }
+                        }
+                    },
+                ]
+            }
+        },
+        {"$count": "count_articles"},
+    ]
+    result = list(db[temp_collection].aggregate(pipeline))
+    concurrency = result[0]["count_articles"] / NUM_ARTICLES if len(result) != 0 else 0
+    return ids[0], ids[1], concurrency
+
+
+def weight_to_color(weight, weights, cmap):
+    norm_weight = (weight - min(weights)) / (max(weights) - min(weights))
+    rgba = cmap(norm_weight)
+    return f"rgb({rgba[0]*255}, {rgba[1]*255}, {rgba[2]*255})"
+
+
 if __name__ == "__main__":
     start_time = datetime.now()
-    articles_relevant = extract_author_info_from_articles_title_having_keywords(
-        target_collection="gossip", keyword="雞蛋", num_articles=2000
-    )
-
-    all_commenters_descriptive_info = defaultdict(lambda: defaultdict(float))
-    for article in articles_relevant:
-        comments_extracted = extract_commenter_info_from_article_with_article_url(
-            target_collection="gossip", article_data=article
-        )
-        all_commenters_descriptive_info = summarize_commenters_metadata(
-            comments_extracted, all_commenters_descriptive_info
-        )
-
-    df = convert_commenters_metadata_to_dataframe(all_commenters_descriptive_info)
-    print(extract_top_freq_commenter_id(df, 5))
-    print(extract_top_agree_commenter_id(df, 5))
-    print(extract_top_disagree_commenter_id(df, 5))
-    print(extract_top_short_comment_latency_commenter_id(df, 5))
-    print("=====" * 20)
     print(f"total time: {datetime.now() - start_time}")

@@ -45,16 +45,22 @@ def create_overview_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
 
     app.layout = html.Div(
         [
-            html.H1("PTT Comment Detector", style={"textAlign": "center"}),
+            html.H1("PTT Comment Detector - Overview", style={"textAlign": "center"}),
             html.Hr(),
-            html.Div(
+            html.H3(f"Overview of Article, Comments, Accounts Collected"),
+            dcc.Loading(
+                id="loading-overview-info",
+                type="circle",
                 children=[
                     dcc.Interval(
                         id="interval-component", interval=20 * 1000, n_intervals=0
                     ),
                     html.Div(id="live-update-text"),
-                ]
+                ],
             ),
+            html.Br(),
+            html.Hr(),
+            html.H3(f"Keywords of 2 Boards (Gossiping and Politics)"),
             dcc.Dropdown(
                 id="dropdown",
                 options=[
@@ -64,34 +70,41 @@ def create_overview_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
                 ],
                 value=1,
             ),
-            html.Div(
+            dcc.Loading(
+                id="loading-keyword-overview-info",
+                type="circle",
                 children=[
-                    dcc.Graph(
-                        id="gossips-title-keyword-barchart",
-                        style={"width": "25%", "display": "none"},
+                    html.Div(
+                        children=[
+                            dcc.Graph(
+                                id="gossips-title-keyword-barchart",
+                                style={"width": "25%", "display": "none"},
+                            ),
+                            dcc.Graph(
+                                id="gossips-comments-keyword-barchart",
+                                style={"width": "25%", "display": "none"},
+                            ),
+                            dcc.Graph(
+                                id="politic-title-keyword-barchart",
+                                style={"width": "25%", "display": "none"},
+                            ),
+                            dcc.Graph(
+                                id="politic-comments-keyword-barchart",
+                                style={"width": "25%", "display": "none"},
+                            ),
+                        ]
                     ),
-                    dcc.Graph(
-                        id="gossips-comments-keyword-barchart",
-                        style={"width": "25%", "display": "none"},
-                    ),
-                    dcc.Graph(
-                        id="politic-title-keyword-barchart",
-                        style={"width": "25%", "display": "none"},
-                    ),
-                    dcc.Graph(
-                        id="politic-comments-keyword-barchart",
-                        style={"width": "25%", "display": "none"},
-                    ),
-                ]
+                ],
             ),
             html.Hr(),
+            html.H3(f"The Top 10 Breaking and Popular Articles in the Gossiping Board"),
             html.Div(
-                style={"display": "flex", 'width': '100%'},
+                style={"display": "flex", "width": "100%"},
                 children=[
                     html.Div(
                         style={"width": "49.5%", "marginRight": "1%"},
                         children=[
-                            html.H3(f"[八卦版] 爆卦類文章 - 留言數量前 {NUM_NEWS} 名"),
+                            html.H5(f"[八卦版] 爆卦類文章 - 留言數量前 {NUM_NEWS} 名"),
                             dash_table.DataTable(
                                 id="gossips-news-breaking",
                                 style_table={"width": "100%"},
@@ -147,7 +160,7 @@ def create_overview_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
                     html.Div(
                         style={"width": "49.5%"},
                         children=[
-                            html.H3(f"[八卦版] 爆文文章 (推 - 噓 >= 100) - 留言數量前 {NUM_NEWS} 名"),
+                            html.H5(f"[八卦版] 爆文文章 (推 - 噓 >= 100) - 留言數量前 {NUM_NEWS} 名"),
                             dash_table.DataTable(
                                 id="gossips-news-popular",
                                 style_table={"width": "100%"},
@@ -201,7 +214,7 @@ def create_overview_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
                         ],
                     ),
                 ],
-            )
+            ),
         ]
     )
 
@@ -272,15 +285,4 @@ def create_overview_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
             "records"
         )
 
-    # @app.callback(
-    #     [Output("network-graph", "figure"), Output("network-graph", "style")],
-    #     [Input("submit-button-id", "n_clicks")],
-    #     [dash.dependencies.State("account-id", "value")],
-    # )
-    # def generate_network_graph_one_account(n_clicks, account_id):
-    #     if n_clicks is None or not account_id:
-    #         return dash.no_update, {"display": "none"}
-    #
-    #     fig = network_graph_one_account(account_id=account_id)
-    #     return fig, {"display": "block"}
     return app
