@@ -17,6 +17,7 @@ class AllowedBoard(str, enum.Enum):
     gossip = "gossip"
     politic = "politic"
 
+
 @app.get(
     path="/",
     response_class=HTMLResponse
@@ -48,6 +49,14 @@ def get_commenter_articles(
         "board": target_collection,
         "articles": all_articles,
     }
+
+
+@app.get(
+    path="/authors/{author_id}",
+    summary="Get top 20 articles ordered by number of comments descending published by a author"
+)
+def get_top_20_articles(author_id: str):
+    return
 
 
 overview_app = create_overview_dash_app(requests_pathname_prefix="/overview/")
