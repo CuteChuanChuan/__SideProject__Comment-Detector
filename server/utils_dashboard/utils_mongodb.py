@@ -1,14 +1,20 @@
 """
 This module contains utility functions for mongodb to analyze data and make graphs.
 """
+import os
 import pytz
+import time
+import json
+import redis
 import pandas as pd
 from uuid import uuid4
+from dotenv import load_dotenv
 from itertools import combinations
 from typing import Tuple, Any
 from datetime import datetime, timedelta
 from .config_dashboard import db
 
+load_dotenv(verbose=True)
 
 BATCH_SIZE = 10000
 NUM_ARTICLES = 100
@@ -18,6 +24,11 @@ current_time = datetime.now(current_timezone).replace(
     hour=0, minute=0, second=0, microsecond=0
 )
 
+redis_pool = redis.ConnectionPool(host=os.getenv("REDIS_HOST", "localhost"),
+                                  port=os.getenv("REDIS_PORT", 6379),
+                                  db=os.getenv("REDIS_DB", 0))
+redis_conn = redis.StrictRedis(connection_pool=redis_pool, decode_responses=True)
+
 
 # Section: overall information about crawling data
 def count_articles(target_collection: str) -> int:
@@ -26,7 +37,36 @@ def count_articles(target_collection: str) -> int:
     :param target_collection: target collection
     :return: number of articles
     """
-    return db[target_collection].count_documents({})
+    return db[target_collection].estimated_document_count({})
+
+
+def store_articles_count_sum(max_retries: int = 5, delay: int = 2):
+    """
+    compute the total number of articles in mongodb and store it in Redis
+    :param max_retries: maximum number of retries
+    :param delay: delay between retries in seconds
+    """
+    total_articles = count_articles("gossip") + count_articles("politics")
+
+    for trying in range(1, max_retries + 1):
+        try:
+            redis_conn.set("total_articles", total_articles)
+            break
+        except redis.exceptions as e:
+            print(
+                f"{e}: Failed to set value of article counts sum in Redis. "
+                f"Attempt {trying + 1} of {max_retries}. Retrying in {delay} seconds."
+            )
+            if trying == max_retries:
+                raise e(f"Failed to set value of article counts sum in {max_retries} attempts")
+            time.sleep(delay)
+
+
+def retrieve_articles_count_sum():
+    """
+    retrieve the total number of articles of mongodb from Redis
+    """
+    return json.loads(redis_conn.get("total_articles").decode("utf-8"))
 
 
 def count_comments(target_collection: str) -> int:
@@ -35,14 +75,50 @@ def count_comments(target_collection: str) -> int:
     :param target_collection: target collection
     :return: number of articles
     """
-    num_comments = 0
-    cursor = db[target_collection].find({}, {"article_data.num_of_comment": 1})
-    cursor.batch_size(BATCH_SIZE)
-    for document in cursor:
-        article_data = document.get("article_data", {})
-        comments = article_data.get("num_of_comment", 0)
-        num_comments += comments
-    return num_comments
+    pipeline = [
+        {
+            "$group": {
+                "_id": None,
+                "total_comments": {"$sum": "$article_data.num_of_comment"},
+            }
+        }
+    ]
+
+    result = list(db[target_collection].aggregate(pipeline))
+    if result:
+        return result[0]["total_comments"]
+    return 0
+
+
+def store_comments_count_sum(max_retries: int = 5, delay: int = 2):
+    """
+    compute the total number of comments in mongodb and store it in Redis
+    :param max_retries: maximum number of retries
+    :param delay: delay between retries in seconds
+    """
+    gossips_result = count_comments("gossip")
+    politics_result = count_comments("politics")
+    total_comments = gossips_result + politics_result
+
+    for trying in range(1, max_retries + 1):
+        try:
+            redis_conn.set("total_comments", total_comments)
+            break
+        except redis.exceptions as e:
+            print(
+                f"{e}: Failed to set value of comments counts sum in Redis. "
+                f"Attempt {trying + 1} of {max_retries}. Retrying in {delay} seconds."
+            )
+            if trying == max_retries:
+                raise e(f"Failed to set value of comments counts sum in {max_retries} attempts")
+            time.sleep(delay)
+
+
+def retrieve_comments_count_sum():
+    """
+    retrieve the total number of comments of mongodb from Redis
+    """
+    return json.loads(redis_conn.get("total_comments").decode("utf-8"))
 
 
 def count_accounts(target_collection: str) -> int:
@@ -51,28 +127,56 @@ def count_accounts(target_collection: str) -> int:
     :param target_collection: target collection
     :return: number of articles
     """
-    unique_accounts = set()
-    cursor = db[target_collection].find({}, {"article_data.author": 1})
-    cursor.batch_size(BATCH_SIZE)
-    for document in cursor:
-        article_data = document.get("article_data", {})
-        unique_accounts.add(article_data["author"])
-    pipeline = [
+
+    author_pipeline = [
+        {"$group": {"_id": None, "unique_authors": {"$addToSet": "$article_data.author"}}}
+    ]
+    authors_result = list(db[target_collection].aggregate(author_pipeline))
+    unique_authors = set(authors_result[0]["unique_authors"]) if authors_result else set()
+
+    commenter_pipeline = [
         {"$unwind": "$article_data.comments"},
         {
             "$group": {
                 "_id": None,
-                "unique_commenter_ids": {
-                    "$addToSet": "$article_data.comments.commenter_id"
-                },
+                "unique_commenters": {"$addToSet": "$article_data.comments.commenter_id"},
             }
         },
     ]
-    result = list(db[target_collection].aggregate(pipeline))
-    unique_commenter_ids = result[0]["unique_commenter_ids"] if result else []
-    for commenter in unique_commenter_ids:
-        unique_accounts.add(commenter)
-    return len(unique_accounts)
+    commenters_result = list(db[target_collection].aggregate(commenter_pipeline))
+    unique_commenters = (
+        set(commenters_result[0]["unique_commenters"]) if commenters_result else set()
+    )
+    all_unique_accounts = unique_authors.union(unique_commenters)
+    return len(all_unique_accounts)
+
+
+def store_accounts_count_sum(max_retries: int = 5, delay: int = 2):
+    """
+    compute the total number of accounts in mongodb and store it in Redis
+    :param max_retries: maximum number of retries
+    :param delay: delay between retries in seconds
+    """
+    total_accounts = count_accounts("gossip") + count_accounts("politics")
+    for trying in range(1, max_retries + 1):
+        try:
+            redis_conn.set("total_accounts", total_accounts)
+            break
+        except redis.exceptions as e:
+            print(
+                f"{e}: Failed to set value of accounts counts sum in Redis. "
+                f"Attempt {trying + 1} of {max_retries}. Retrying in {delay} seconds."
+            )
+            if trying == max_retries:
+                raise e(f"Failed to set value of accounts counts sum in {max_retries} attempts")
+            time.sleep(delay)
+
+
+def retrieve_accounts_count_sum():
+    """
+    retrieve the total number of accounts of mongodb from Redis
+    """
+    return json.loads(redis_conn.get("total_accounts").decode("utf-8"))
 
 
 # Section: operations about article
@@ -159,6 +263,18 @@ def get_past_n_days_article_title(target_collection: str, n_days: int) -> list[d
     return list(cursor)
 
 
+def store_past_n_days_article_title():
+    collections = ["gossip", "gossip", "gossip", "politics", "politics", "politics"]
+    past_n_days = [1, 3, 7, 1, 3, 7]
+    for i in zip(collections, past_n_days):
+        title_results = get_past_n_days_article_title(target_collection=i[0], n_days=i[1])
+        redis_conn.set(f"past_n_days_article_title_{i[0]}_{i[1]}", json.dumps(title_results))
+
+
+def retrieve_past_n_days_article_title(target_collection: str, n_days: int):
+    return json.loads(redis_conn.get(f"past_n_days_article_title_{target_collection}_{n_days}").decode("utf-8"))
+
+
 def get_past_n_days_comments(target_collection: str, n_days: int) -> list[dict]:
     """
     return the n days of comments
@@ -188,6 +304,18 @@ def get_past_n_days_comments(target_collection: str, n_days: int) -> list[dict]:
     ]
     cursor = db[target_collection].aggregate(pipeline).batch_size(BATCH_SIZE)
     return list(cursor)
+
+
+def store_past_n_days_comments():
+    collections = ["gossip", "gossip", "gossip", "politics", "politics", "politics"]
+    past_n_days = [1, 3, 7, 1, 3, 7]
+    for i in zip(collections, past_n_days):
+        comments_results = get_past_n_days_comments(target_collection=i[0], n_days=i[1])
+        redis_conn.set(f"past_n_days_comments_{i[0]}_{i[1]}", json.dumps(comments_results))
+
+
+def retrieve_past_n_days_comments(target_collection: str, n_days: int):
+    return json.loads(redis_conn.get(f"past_n_days_comments_{target_collection}_{n_days}").decode("utf-8"))
 
 
 # Section: operations about accounts
@@ -489,4 +617,10 @@ def weight_to_color(weight, weights, cmap):
 
 if __name__ == "__main__":
     start_time = datetime.now()
+    store_past_n_days_comments()
+    print(f"total time: {datetime.now() - start_time}")
+    start_time = datetime.now()
+    result = retrieve_past_n_days_comments(target_collection="politics", n_days=7)
+    print(result)
+    print(type(result))
     print(f"total time: {datetime.now() - start_time}")
