@@ -30,7 +30,7 @@ redis_pool = redis.ConnectionPool(host=os.getenv("REDIS_HOST", "localhost"),
 redis_conn = redis.StrictRedis(connection_pool=redis_pool, decode_responses=True)
 
 
-# Section: overall information about crawling data
+# Section: overall information about crawling data (used in dashboard)
 def count_articles(target_collection: str) -> int:
     """
     count number of articles in mongodb
@@ -320,17 +320,17 @@ def retrieve_past_n_days_comments(target_collection: str, n_days: int):
 
 # Section: operations about accounts
 def extract_all_articles_commenter_involved(
-    target_collection: str, account: str
+    target_collection: str, commenter_account: str
 ) -> list[dict]:
     """
     return all articles which have been commented by commenter in users' query
     :param target_collection: target collection
-    :param account: account name of the commenter
+    :param commenter_account: account name of the commenter
     """
     cursor = (
         db[target_collection]
         .find(
-            {"article_data.comments.commenter_id": account},
+            {"article_data.comments.commenter_id": commenter_account},
             {"_id": 0, "article_url": 1, "article_data.title": 1},
         )
         .batch_size(BATCH_SIZE)
@@ -346,6 +346,64 @@ def extract_all_articles_commenter_involved(
     return articles_collection
 
 
+def extract_top_n_articles_author_published(
+        target_collection: str, author_account: str, num_articles: int
+) -> list[dict]:
+    pattern = "^" + author_account
+    cursor = (db[target_collection]
+              .find({"article_data.author": {"$regex": pattern}},
+                    {"_id": 0, "article_url": 1, "article_data.title": 1},)
+              .sort("article_data.num_of_comment", -1).limit(num_articles))
+    articles_collection = []
+    for article in cursor:
+        articles_collection.append(
+            {
+                "article_url": article["article_url"],
+                "article_title": article["article_data"]["title"]
+            }
+        )
+    return articles_collection
+
+
+def extract_top_n_articles_keyword_in_title(
+    target_collection: str, keyword: str, num_articles: int
+) -> list[dict]:
+    cursor = (
+        db[target_collection]
+        .find(
+            {"article_data.title": {"$regex": keyword, "$options": "i"}},
+            {"_id": 0, "article_url": 1, "article_data.title": 1},
+        )
+        .sort("article_data.num_of_comment", -1)
+        .limit(num_articles)
+    )
+    articles_collection = []
+    for article in cursor:
+        articles_collection.append(
+            {
+                "article_url": article["article_url"],
+                "article_title": article["article_data"]["title"],
+            }
+        )
+    return articles_collection
+
+
+def extract_commenters_id_using_same_ipaddress(
+    target_collection: str, ipaddress: str
+):
+    pipeline = [
+        {"$match": {"article_data.comments.commenter_ip": ipaddress}},
+        {"$unwind": "$article_data.comments"},
+        {"$match": {"article_data.comments.commenter_ip": ipaddress}},
+        {"$project": {"commenter_id": "$article_data.comments.commenter_id", "_id": 0}},
+        {"$group": {"_id": "$commenter_id", "ipaddress_usage_count": {"$sum": 1}}},
+        {"$project": {"commenter_account": "$_id", "ipaddress_usage_count": 1, "_id": 0}},
+        {"$sort": {"ipaddress_usage_count": -1}},
+    ]
+    result = db[target_collection].aggregate(pipeline)
+    return list(result)
+
+
 # Section: operations to generate network graph
 def extract_author_info_from_articles_title_having_keywords(
     target_collection: str, keyword: str, num_articles: int
@@ -356,7 +414,6 @@ def extract_author_info_from_articles_title_having_keywords(
     :param keyword: keyword
     :param num_articles: number of articles
     """
-
     cursor = (
         db[target_collection]
         .find(
@@ -613,14 +670,3 @@ def weight_to_color(weight, weights, cmap):
     norm_weight = (weight - min(weights)) / (max(weights) - min(weights))
     rgba = cmap(norm_weight)
     return f"rgb({rgba[0]*255}, {rgba[1]*255}, {rgba[2]*255})"
-
-
-if __name__ == "__main__":
-    start_time = datetime.now()
-    store_past_n_days_comments()
-    print(f"total time: {datetime.now() - start_time}")
-    start_time = datetime.now()
-    result = retrieve_past_n_days_comments(target_collection="politics", n_days=7)
-    print(result)
-    print(type(result))
-    print(f"total time: {datetime.now() - start_time}")

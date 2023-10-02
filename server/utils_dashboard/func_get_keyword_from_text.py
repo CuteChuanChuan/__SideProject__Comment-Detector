@@ -99,5 +99,4 @@ def retrieve_top_n_keywords(target_collection: str, n_days: int, source: str):
 
 
 if __name__ == '__main__':
-    # store_top_n_keywords()
     print(retrieve_top_n_keywords(target_collection="gossip", n_days=1, source="標題"))

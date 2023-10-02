@@ -1,5 +1,6 @@
 import time
 import pytz
+import uvicorn
 import logging
 from fastapi import FastAPI
 from datetime import datetime
@@ -44,8 +45,11 @@ def update_keywords_trends():
         print(e)
 
 
-scheduler.add_job(update_overview_crawled_data, "interval", seconds=60)
+scheduler.add_job(update_overview_crawled_data, "interval", seconds=120)
 scheduler.add_job(
     update_keywords_trends,
     trigger="cron", hour=0, minute=0, timezone=pytz.timezone("Asia/Taipei"))
 # scheduler.add_job(update_keywords_trends, "interval", seconds=60)
+
+if __name__ == "__main__":
+    uvicorn.run(app, port=8001, host="0.0.0.0")
