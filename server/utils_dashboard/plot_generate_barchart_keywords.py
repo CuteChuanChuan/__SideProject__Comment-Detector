@@ -4,13 +4,6 @@ from utils_dashboard.utils_mongodb import get_past_n_days_article_title, get_pas
 
 
 def generate_barchart_keywords(target_collection: str, n_days: int, source: str) -> go.Figure:
-    # text_data = None
-    # if source == "標題":
-    #     text_data = get_past_n_days_article_title(target_collection, n_days)
-    # if source == "留言":
-    #     text_data = get_past_n_days_comments(target_collection, n_days)
-    #
-    # keyword_data = extract_top_n_keywords(text_data, n_keywords)
     keyword_data = retrieve_top_n_keywords(
         target_collection=target_collection, n_days=n_days, source=source
     )

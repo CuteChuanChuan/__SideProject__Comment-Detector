@@ -1,35 +1,16 @@
 import os
-import re
-import time
-import jieba
 import openai
-import pandas as pd
-import jieba.analyse
-from keybert import KeyBERT
-import plotly.offline as py
-import plotly.express as px
 from dotenv import load_dotenv
-from pymongo import MongoClient
-import plotly.graph_objects as go
-from gensim import corpora, models
-from collections import defaultdict
-from datetime import timedelta, date
+from pymongo import MongoClient, ReadPreference
 from datetime import datetime, timedelta, timezone
-from sentence_transformers import SentenceTransformer
-from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
-from ckiptagger import data_utils, construct_dictionary, WS, POS, NER
 
 
 load_dotenv(verbose=True)
 
 uri = os.getenv("ATLAS_URI", "None")
-client = MongoClient(uri)
+client = MongoClient(uri, read_preference=ReadPreference.SECONDARY)
 db = client.ptt
 openai.api_key = os.getenv("OPENAI_KEY")
-
-# neo4j_url = os.environ.get("NEO4J_URL", "bolt://localhost:7687")
-# neo4j_user = os.environ.get("NEO4J_USER", "neo4j")
-# neo4j_password = os.environ.get("NEO4J_PASSWORD", "password")
 
 
 def chatgpt_analyze_topic(prompt):
@@ -55,11 +36,6 @@ def get_article_content(target_collection: str, article_url: str):
     return article["article_data"]["main_content"][:400]
 
 
-# article_manin_content = get_article_content(target_collection="politics",
-#                                             article_url="https://www.ptt.cc/bbs/HatePolitics/M.1695225784.A.A25.html")
-#
-# results = chatgpt_analyze_topic(article_manin_content)
-# print(results)
 def timestamp_to_datetime(unix_timestamp: float) -> datetime:
     utc_8 = datetime.fromtimestamp(unix_timestamp, timezone.utc).astimezone(
         timezone(timedelta(hours=8))
