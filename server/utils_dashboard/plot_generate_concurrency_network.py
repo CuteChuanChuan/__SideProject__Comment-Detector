@@ -85,8 +85,8 @@ def create_network_graph(
     board_name = "八卦" if board_name == "gossip" else "政黑"
     comment_type = "推文" if comment_type == "推" else "噓文"
     layout = go.Layout(
-        title=f"{board_name}版，有關<{keyword}>的留言數量前 {NUM_ARTICLES} 名的文章中，"
-        f"{comment_type}次數前 {num_commenters} 名的留言者帳號之間一起出現並留言的次數",
+        title=f"<{keyword}>相關文章留言數量前 {NUM_ARTICLES} 篇文章中，"
+        f"{comment_type}次數前 {num_commenters} 名的留言者帳號一起出現並留言的次數",
         showlegend=False,
         xaxis=dict(showticklabels=False, zeroline=False, showgrid=False),
         yaxis=dict(showticklabels=False, zeroline=False, showgrid=False),

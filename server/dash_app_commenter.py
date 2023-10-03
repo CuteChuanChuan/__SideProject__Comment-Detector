@@ -2,20 +2,11 @@ import dash
 import jieba.analyse
 from dotenv import load_dotenv
 from flask_caching import Cache
+import dash_bootstrap_components as dbc
 from dash import dcc, html, Input, Output
-from collections import defaultdict
 from utils_dashboard.plot_generate_wordcloud import wordcloud_graph
-from utils_dashboard.plot_generate_network_2D import draw_network_2d
 from utils_dashboard.plot_generate_heatmap import heatmap_commenter_activities
-from utils_dashboard.utils_mongodb import (
-    extract_top_freq_commenter_id,
-    extract_top_agree_commenter_id,
-    extract_top_disagree_commenter_id,
-    extract_author_info_from_articles_title_having_keywords,
-    extract_commenter_info_from_article_with_article_url,
-    summarize_commenters_metadata,
-    convert_commenters_metadata_to_dataframe,
-)
+
 
 load_dotenv(verbose=True)
 
@@ -36,7 +27,7 @@ def create_commenter_dash_app(requests_pathname_prefix: str = None) -> dash.Dash
     app = dash.Dash(
         __name__,
         requests_pathname_prefix=requests_pathname_prefix,
-        external_stylesheets=external_stylesheets,
+        external_stylesheets=[dbc.themes.MATERIA],
     )
     app.scripts.config.serve_locally = True
     cache = Cache(
@@ -51,58 +42,164 @@ def create_commenter_dash_app(requests_pathname_prefix: str = None) -> dash.Dash
     app.config.suppress_callback_exceptions = True
     dcc._js_dist[0]["external_url"] = "https://cdn.plot.ly/plotly-basic-latest.min.js"
 
-    app.layout = html.Div(
+    # app.layout = html.Div(
+    #     [
+    #         html.H1("PTT Comment Detector - Commenter", style={"textAlign": "center"}),
+    #         html.Hr(),
+    #         html.H5(f"Please enter the commenter account id you want to search. "
+    #                 f"We will show some information about that account id"),
+    #         html.Div(
+    #             children=[
+    #                 dcc.Input(
+    #                     id="account-id",
+    #                     type="text",
+    #                     value="",
+    #                     placeholder="Enter Account ID",
+    #                     style={
+    #                         "display": "inline-block",
+    #                         "vertical-align": "middle",
+    #                         "margin-right": "10px",
+    #                     },
+    #                 ),
+    #                 html.Button(
+    #                     "Submit",
+    #                     id="submit-button-id",
+    #                     style={"display": "inline-block", "vertical-align": "middle"},
+    #                 ),
+    #             ]
+    #         ),
+    #         html.Br(),
+    #         html.Hr(),
+    #         html.Div(
+    #             children=[
+    #                 html.H6("Activity Graph (Area circled by red line is the working hours)",
+    #                         style={"display": "inline-block", "width": "49%"}),
+    #                 dcc.Loading(
+    #                     id="loading-account-activity-graph",
+    #                     type="circle",
+    #                     children=[
+    #                         dcc.Graph(id="activity-graph", style={"width": "49%", "display": "none"}),
+    #                     ],
+    #                 ),
+    #                 html.Br(),
+    #                 html.H6("Wordcloud Graph (Please wait since the system will analyze all comments of that account)",
+    #                         style={"display": "inline-block", "width": "49%"}),
+    #                 dcc.Loading(
+    #                     id="loading-account-wordcloud-graph",
+    #                     type="circle",
+    #                     children=[
+    #                         html.Img(id="wordcloud-graph", style={"width": "49%", "display": "none"}),
+    #                     ],
+    #                 ),
+    #             ]
+    #         ),
+    #     ]
+    # )
+
+    app.layout = dbc.Container(
         [
-            html.H1("PTT Comment Detector - Commenter", style={"textAlign": "center"}),
-            html.Hr(),
-            html.H5(f"Please enter the commenter account id you want to search. "
-                    f"We will show some information about that account id"),
+            html.H1("PTT Comment Detector - Commenter", className="text-center mb-4"),
             html.Div(
-                children=[
-                    dcc.Input(
-                        id="account-id",
-                        type="text",
-                        value="",
-                        placeholder="Enter Account ID",
-                        style={
-                            "display": "inline-block",
-                            "vertical-align": "middle",
-                            "margin-right": "10px",
-                        },
+                [
+                    html.A(
+                        dbc.Button(
+                            "Go to Overview",
+                            outline=True,
+                            color="primary",
+                            className="mr-20",
+                            style={"color": "blue"},
+                        ),
+                        href="/overview",
+                        style={"marginRight": "15px"},
                     ),
-                    html.Button(
-                        "Submit",
-                        id="submit-button-id",
-                        style={"display": "inline-block", "vertical-align": "middle"},
+                    html.A(
+                        dbc.Button(
+                            "Go to Keyword",
+                            outline=True,
+                            color="secondary",
+                            className="ml-20",
+                            style={"color": "green"},
+                        ),
+                        href="/keyword",
+                    ),
+                ],
+                style={"textAlign": "center"},
+            ),
+            html.Hr(),
+            html.H5(
+                f"Please enter the commenter account id you want to search. "
+                f"We will show some information about that account id"
+            ),
+            dbc.Row(
+                [
+                    dbc.Col(
+                        [
+                            dcc.Input(
+                                id="account-id",
+                                type="text",
+                                value="",
+                                placeholder="Enter Account ID",
+                                className="mr-10",
+                            ),
+                            html.Button(
+                                "Submit",
+                                id="submit-button-id",
+                            ),
+                        ],
+                        width=6,
+                        className="mb-4 ml-2",
                     ),
                 ]
             ),
-            html.Br(),
             html.Hr(),
-            html.Div(
-                children=[
-                    html.H6("Activity Graph (Area circled by red line is the working hours)",
-                            style={"display": "inline-block", "width": "49%"}),
-                    dcc.Loading(
-                        id="loading-account-activity-graph",
-                        type="circle",
-                        children=[
-                            dcc.Graph(id="activity-graph", style={"width": "49%", "display": "none"}),
-                        ],
+            dbc.Row(
+                [
+                    dbc.Col(
+                        html.H6(
+                            "Activity Graph (Area circled by red line is the working hours)"
+                        ),
+                        width=6,
                     ),
-                    html.Br(),
-                    html.H6("Wordcloud Graph (Please wait since the system will analyze all comments of that account)",
-                            style={"display": "inline-block", "width": "49%"}),
-                    dcc.Loading(
-                        id="loading-account-wordcloud-graph",
-                        type="circle",
-                        children=[
-                            html.Img(id="wordcloud-graph", style={"width": "49%", "display": "none"}),
-                        ],
+                    dbc.Col(
+                        html.H6(
+                            "Wordcloud Graph (Please wait since the system will analyze all comments of that account)"
+                        ),
+                        width=6,
                     ),
                 ]
             ),
-        ]
+            dbc.Row(
+                [
+                    dbc.Col(
+                        dcc.Loading(
+                            id="loading-account-activity-graph",
+                            type="circle",
+                            children=[
+                                dcc.Graph(
+                                    id="activity-graph",
+                                    style={"width": "100%", "display": "none"},
+                                ),
+                            ],
+                        ),
+                        width=6,
+                    ),
+                    dbc.Col(
+                        dcc.Loading(
+                            id="loading-account-wordcloud-graph",
+                            type="circle",
+                            children=[
+                                html.Img(
+                                    id="wordcloud-graph",
+                                    style={"width": "100%", "display": "none"},
+                                ),
+                            ],
+                        ),
+                        width=6,
+                    ),
+                ]
+            ),
+        ],
+        fluid=True,
     )
 
     @app.callback(
@@ -115,7 +212,7 @@ def create_commenter_dash_app(requests_pathname_prefix: str = None) -> dash.Dash
             return dash.no_update, {"display": "none"}
 
         fig = wordcloud_graph(account_id=account_id)
-        return fig, {"width": "49%", "display": "inline-block"}
+        return fig, {"width": "100%", "display": "block"}
 
     @app.callback(
         [Output("activity-graph", "figure"), Output("activity-graph", "style")],
@@ -127,6 +224,6 @@ def create_commenter_dash_app(requests_pathname_prefix: str = None) -> dash.Dash
             return dash.no_update, {"display": "none"}
 
         fig = heatmap_commenter_activities(account_id=account_id)
-        return fig, {"width": "49%", "display": "inline-block"}
+        return fig, {"width": "100%", "display": "block"}
 
     return app
