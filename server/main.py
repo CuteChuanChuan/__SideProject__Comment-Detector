@@ -1,5 +1,8 @@
 import enum
+import dash
+from dash import html, dcc
 import uvicorn
+import dash_bootstrap_components as dbc
 from fastapi.responses import HTMLResponse
 from fastapi import FastAPI, Query, Request
 from fastapi.templating import Jinja2Templates
@@ -27,6 +30,25 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 class AllowedBoard(str, enum.Enum):
     gossip = "gossip"
     politics = "politics"
+
+
+# def create_main_dash_app():
+#     app = dash.Dash(__name__,
+#                     external_stylesheets=[dbc.themes.BOOTSTRAP],
+#                     requests_pathname_prefix='/dashboard/',
+#                     suppress_callback_exceptions=True)
+#
+#     tabs = dbc.Tabs(
+#         [
+#             dbc.Tab(label="Overview", children=overview_app.layout),
+#             dbc.Tab(label="Keyword", children=keyword_app.layout),
+#             dbc.Tab(label="Commenter", children=commenter_app.layout)
+#         ]
+#     )
+#
+#     app.layout = dbc.Container([tabs], className="mt-3")
+#
+#     return app
 
 
 @app.get(path="/", response_class=HTMLResponse)
@@ -139,6 +161,54 @@ def get_commenter_ids_by_ipaddress(
         "num_commenters": len(all_commenters_id),
         "commenters": all_commenters_id,
     }
+
+
+@app.get(path="/dashboard", response_class=HTMLResponse)
+def dashboard():
+    html_content = """
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta http-equiv="X-UA-Compatible" content="IE=edge">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Dashboard</title>
+            <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+        </head>
+        <body>
+            <div class="container mt-5 mb-5">
+                <h1 class="text-center mb-5 animate__animated animate__bounce">PTT Comment Detector Dashboard</h1>
+                <div class="d-flex justify-content-center animate__animated animate__fadeIn">
+                    <nav class="navbar navbar-expand-lg navbar-light bg-light rounded">
+                        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                            <span class="navbar-toggler-icon"></span>
+                        </button>
+                        <div class="collapse navbar-collapse" id="navbarNav">
+                            <ul class="navbar-nav">
+                                <li class="nav-item">
+                                    <a class="nav-link" href="/overview">Overview</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" href="/keyword">Keyword</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" href="/commenter">Commenter</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </nav>
+                </div>
+            </div>
+
+            <!-- Bootstrap and jQuery Scripts -->
+            <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+            <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+            <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+        </body>
+        </html>
+    """
+    return HTMLResponse(content=html_content)
 
 
 overview_app = create_overview_dash_app(requests_pathname_prefix="/overview/")

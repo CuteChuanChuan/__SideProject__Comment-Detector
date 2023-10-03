@@ -1,7 +1,7 @@
 import time
 import pytz
 import uvicorn
-import logging
+from loguru import logger
 from fastapi import FastAPI
 from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -16,33 +16,50 @@ app = FastAPI()
 scheduler = BackgroundScheduler()
 scheduler.start()
 
+logger.add(
+    sink="log/redis_update_{time}.log",
+    rotation="00:00",
+    retention="14 days",
+    level="DEBUG",
+    encoding="utf-8",
+    format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {file}:{line} {function}() | {message}",
+    enqueue=True,
+    serialize=True,
+    backtrace=True,
+    diagnose=False,
+)
+
 
 def update_overview_crawled_data():
     try:
-        print(f"Start - update_overview_crawled_data")
+        logger.opt(lazy=True, colors=True).info(f"<blue>Start - update overview crawled data</blue>")
+        start = time.time()
         store_articles_count_sum()
-        print("Updated overview crawled data - articles count")
+        logger.opt(lazy=True).info("Updated - articles count")
         store_comments_count_sum()
-        print("Updated overview crawled data - comments count")
+        logger.opt(lazy=True).info("Updated - comments count")
         store_accounts_count_sum()
-        print("Updated overview crawled data - accounts count")
+        logger.opt(lazy=True).info("Updated - accounts count")
+        end = time.time() - start
+        logger.opt(lazy=True, colors=True).info(f"<blue>Finish - update overview crawled data (Time: {end})</blue>")
     except Exception as e:
-        print(e)
+        logger.error(e)
 
 
 def update_keywords_trends():
     try:
+        logger.opt(lazy=True, colors=True).info(f"<blue>Start - update keywords trends</blue>")
         start = time.time()
-        print(f"Start - update_keywords_trends")
         store_past_n_days_article_title()
-        print("Updated overview past n days article title")
+        logger.opt(lazy=True).info("Updated - past n days article title")
         store_past_n_days_comments()
-        print("Updated overview pas n days article comments")
+        logger.opt(lazy=True).info("Updated - past n days article comments")
         store_top_n_keywords()
-        print("Updated overview trends of keywords")
-        print(f"Time: {time.time() - start}")
+        logger.opt(lazy=True).info("Updated - trends of keywords")
+        end = time.time() - start
+        logger.opt(lazy=True, colors=True).info(f"<blue>Finish - update keywords trends (Time: {end})</blue>")
     except Exception as e:
-        print(e)
+        logger.error(e)
 
 
 scheduler.add_job(update_overview_crawled_data, "interval", seconds=120)

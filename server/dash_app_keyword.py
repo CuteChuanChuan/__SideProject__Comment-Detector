@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from flask_caching import Cache
 from dash import dcc, html, Input, Output
 from collections import defaultdict
+import dash_bootstrap_components as dbc
 
 from utils_dashboard.config_dashboard import db
 from utils_dashboard.plot_generate_concurrency_network import (
@@ -41,7 +42,7 @@ def create_keyword_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
     app = dash.Dash(
         __name__,
         requests_pathname_prefix=requests_pathname_prefix,
-        external_stylesheets=external_stylesheets,
+        external_stylesheets=[dbc.themes.MATERIA],
     )
     app.scripts.config.serve_locally = True
     cache = Cache(
@@ -56,95 +57,219 @@ def create_keyword_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
     app.config.suppress_callback_exceptions = True
     dcc._js_dist[0]["external_url"] = "https://cdn.plot.ly/plotly-basic-latest.min.js"
 
-    app.layout = html.Div(
-    [
-        html.H1("PTT Comment Detector - Keyword", style={"textAlign": "center"}),
-        html.Hr(),
-        html.H5(f"Please enter the keywords and select the board you want to search."),
-        html.Div(
-            children=[
-                dcc.Input(
-                    id="keyword-search",
-                    type="text",
-                    value="",
-                    placeholder="Enter Keyword",
-                    style={
-                        "display": "inline-block",
-                        "vertical-align": "middle",
-                        "margin-right": "10px",
-                    },
-                ),
-                dcc.Dropdown(
-                    id="dropdown-collection",
-                    options=[
-                        {"label": "八卦版", "value": "gossip"},
-                        {"label": "政黑版", "value": "politics"},
-                    ],
-                    value="gossip",
-                    style={
-                        "display": "inline-block",
-                        "vertical-align": "middle",
-                        "width": "150px",
-                        "margin-right": "10px",
-                    },
-                ),
-                html.Button(
-                    "Submit",
-                    id="submit-button-keyword",
-                    disabled=False,
-                    style={"display": "inline-block", "vertical-align": "middle"},
-                ),
-            ]
-        ),
-        html.Hr(),
-        html.H5(f"Some highly active commenters' account id"),
-        dcc.Loading(
-            id="loading-keyword-info",
-            type="circle",
-            children=[
-                html.Div(id="keyword-freq", style={"display": "none"}),
-                html.Div(id="keyword-agree", style={"display": "none"}),
-                html.Div(id="keyword-disagree", style={"display": "none"}),
-            ],
-        ),
-        html.Hr(),
-        html.H5(
-            f"The concurrency (connection) between these accounts will be shown below"
-        ),
-        html.Div(
-            children=[
-                # html.H6(
-                #     f"Concurrency Network Among Top {NUM_NETWORK_COMMENTERS} Commenters "
-                #     f"Whose Commenters Show Liking in Related Article",
-                # ),
-                dcc.Loading(
-                    id="loading-network-like-graph",
-                    type="circle",
-                    children=[
-                        dcc.Graph(
-                            id="article-network-like-graph",
-                            style={"width": "75%", "display": "none"},
+    app.layout = dbc.Container(
+        [
+            html.H1("PTT Comment Detector - Keyword", className="text-center mb-4"),
+            html.Div(
+                [
+                    html.A(
+                        dbc.Button(
+                            "Go to Overview", outline=True, color="primary", className="mr-20", style={"color": "blue"}
                         ),
-                    ],
-                ),
-                # html.H6(
-                #     f"Concurrency Network Among Top {NUM_NETWORK_COMMENTERS} Commenters "
-                #     f"Whose Commenters Show Dis-liking in Related Article",
-                # ),
-                dcc.Loading(
-                    id="loading-network-dislike-graph",
-                    type="circle",
-                    children=[
-                        dcc.Graph(
-                            id="article-network-dislike-graph",
-                            style={"width": "75%", "display": "none"},
+                        href="/overview",
+                        style={"marginRight": "15px"}
+
+                    ),
+                    html.A(
+                        dbc.Button(
+                            "Go to Commenter", outline=True, color="secondary", className="ml-20", style={"color": "green"}
                         ),
-                    ],
-                ),
-            ]
-        ),
-    ]
+                        href="/commenter"
+                    ),
+                ], style={"textAlign": "center"}
+            ),
+            html.Hr(),
+            html.H5(
+                f"Please enter the keywords and select the board you want to search.",
+                className="mb-3",
+            ),
+            dbc.Row(
+                [
+                    dbc.Col(
+                        [
+                            dcc.Input(
+                                id="keyword-search",
+                                type="text",
+                                value="",
+                                placeholder="Enter Keyword",
+                            ),
+                        ],
+                        width=2,
+                        className="mb-2 ml-4",
+                        style={"marginRight": "10px"}
+
+                    ),
+                    dbc.Col(
+                        [
+                            dcc.Dropdown(
+                                id="dropdown-collection",
+                                options=[
+                                    {"label": "八卦版", "value": "gossip"},
+                                    {"label": "政黑版", "value": "politics"},
+                                ],
+                                value="gossip",
+                            ),
+                        ],
+                        width=2,
+                        className="mb-2 mr-20"
+                    ),
+                    dbc.Col(
+                        [
+                            html.Button(
+                                "Submit",
+                                id="submit-button-keyword",
+                                disabled=False,
+                            ),
+                        ],
+                        width=4,
+                        className="mb-2",
+                    ),
+                ],
+                className="mb-3",
+            ),
+            html.Hr(),
+            html.H5(f"Some highly active commenters' account id", className="mb-3"),
+            dcc.Loading(
+                id="loading-keyword-info",
+                type="circle",
+                children=[
+                    html.Div(id="keyword-freq", className="mt-3"),
+                    html.Div(id="keyword-agree", className="mt-3"),
+                    html.Div(id="keyword-disagree", className="mt-3"),
+                ],
+            ),
+            html.Br(),
+            html.Hr(),
+            html.H5(
+                f"The concurrency (connection) between these accounts will be shown below",
+                className="mb-3",
+            ),
+            dbc.Row(
+                [
+                    dbc.Col(
+                        dcc.Loading(
+                            id="loading-network-like-graph",
+                            type="circle",
+                            children=[dcc.Graph(id="article-network-like-graph",
+                                                style={"width": "50%", "display": "none"},
+                                                figure={
+                                                    "data": [],
+                                                    "layout": {"xaxis": {"visible": False}, "yaxis": {"visible": False}},
+                                                }
+                                                )],
+                        ),
+                        width=6,
+                    ),
+                    dbc.Col(
+                        dcc.Loading(
+                            id="loading-network-dislike-graph",
+                            type="circle",
+                            children=[dcc.Graph(id="article-network-dislike-graph",
+                                                style = {"width": "50%", "display": "none"},
+                                                figure = {
+                                                    "data": [],
+                                                    "layout": {"xaxis": {"visible": False}, "yaxis": {"visible": False}},
+                                                }
+                                                )],
+                        ),
+                        width=6,
+                    ),
+                ]
+            ),
+        ],
+        fluid=True,
+        className="my-4",
     )
+
+    # app.layout = html.Div(
+    # [
+    #     html.H1("PTT Comment Detector - Keyword", style={"textAlign": "center"}),
+    #     html.Hr(),
+    #     html.H5(f"Please enter the keywords and select the board you want to search."),
+    #     html.Div(
+    #         children=[
+    #             dcc.Input(
+    #                 id="keyword-search",
+    #                 type="text",
+    #                 value="",
+    #                 placeholder="Enter Keyword",
+    #                 style={
+    #                     "display": "inline-block",
+    #                     "vertical-align": "middle",
+    #                     "margin-right": "10px",
+    #                 },
+    #             ),
+    #             dcc.Dropdown(
+    #                 id="dropdown-collection",
+    #                 options=[
+    #                     {"label": "八卦版", "value": "gossip"},
+    #                     {"label": "政黑版", "value": "politics"},
+    #                 ],
+    #                 value="gossip",
+    #                 style={
+    #                     "display": "inline-block",
+    #                     "vertical-align": "middle",
+    #                     "width": "150px",
+    #                     "margin-right": "10px",
+    #                 },
+    #             ),
+    #             html.Button(
+    #                 "Submit",
+    #                 id="submit-button-keyword",
+    #                 disabled=False,
+    #                 style={"display": "inline-block", "vertical-align": "middle"},
+    #             ),
+    #         ]
+    #     ),
+    #     html.Hr(),
+    #     html.H5(f"Some highly active commenters' account id"),
+    #     dcc.Loading(
+    #         id="loading-keyword-info",
+    #         type="circle",
+    #         children=[
+    #             html.Div(id="keyword-freq", style={"display": "none"}),
+    #             html.Div(id="keyword-agree", style={"display": "none"}),
+    #             html.Div(id="keyword-disagree", style={"display": "none"}),
+    #         ],
+    #     ),
+    #     html.Hr(),
+    #     html.H5(
+    #         f"The concurrency (connection) between these accounts will be shown below"
+    #     ),
+    #     html.Div(
+    #         children=[
+    #             # html.H6(
+    #             #     f"Concurrency Network Among Top {NUM_NETWORK_COMMENTERS} Commenters "
+    #             #     f"Whose Commenters Show Liking in Related Article",
+    #             # ),
+    #             dcc.Loading(
+    #                 id="loading-network-like-graph",
+    #                 type="circle",
+    #                 children=[
+    #                     dcc.Graph(
+    #                         id="article-network-like-graph",
+    #                         style={"width": "75%", "display": "none"},
+    #                     ),
+    #                 ],
+    #             ),
+    #             # html.H6(
+    #             #     f"Concurrency Network Among Top {NUM_NETWORK_COMMENTERS} Commenters "
+    #             #     f"Whose Commenters Show Dis-liking in Related Article",
+    #             # ),
+    #             dcc.Loading(
+    #                 id="loading-network-dislike-graph",
+    #                 type="circle",
+    #                 children=[
+    #                     dcc.Graph(
+    #                         id="article-network-dislike-graph",
+    #                         style={"width": "75%", "display": "none"},
+    #                     ),
+    #                 ],
+    #             ),
+    #         ]
+    #     ),
+    # ]
+    # )
 
 
     @app.callback(
@@ -237,10 +362,8 @@ def create_keyword_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
     def update_commenter_network_graph(n_clicks, keyword_search, dropdown_collection):
         if n_clicks is None or not keyword_search:
             return (
-                dash.no_update,
-                {"width": "50%", "display": "none"},
-                dash.no_update,
-                {"width": "50%", "display": "none"},
+                dash.no_update, {"width": "100%", "display": "none"},
+                dash.no_update, {"width": "100%", "display": "none"}
             )
         temp_collection_id, board_name, keyword = preparation_network_graph(
             keyword=keyword_search, target_collection=dropdown_collection
@@ -273,9 +396,9 @@ def create_keyword_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
 
         return (
             like_graph,
-            {"width": "50%", "display": "block"},
+            {"width": "100%", "display": "block"},
             dislike_graph,
-            {"width": "50%", "display": "block"},
+            {"width": "100%", "display": "block"},
         )
 
     return app
