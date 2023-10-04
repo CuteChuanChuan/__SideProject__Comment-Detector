@@ -1,11 +1,11 @@
 from dash import html
-from .utils_mongodb import count_articles, count_comments, count_accounts
+from .utils_mongodb import retrieve_articles_count_sum, retrieve_comments_count_sum, retrieve_accounts_count_sum
 
 
 def update_layout():
-    total_articles = count_articles("gossip") + count_articles("politics")
-    total_comments = count_comments("gossip") + count_comments("politics")
-    total_accounts = count_accounts("gossip") + count_accounts("politics")
+    total_articles = retrieve_articles_count_sum()
+    total_comments = retrieve_comments_count_sum()
+    total_accounts = retrieve_accounts_count_sum()
 
     return [
         html.Div(

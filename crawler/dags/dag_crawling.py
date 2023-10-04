@@ -6,6 +6,7 @@ import requests
 import urllib.parse
 from airflow import DAG
 from typing import Union
+from loguru import logger
 from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
@@ -22,6 +23,20 @@ db = client.ptt
 
 ua = UserAgent()
 cookies = {"from": "/bbs/Gossiping/index.html", "yes": "yes"}
+
+
+logger.add(
+    sink="logs/airflow_crawler_{time}.log",
+    rotation="00:00",
+    retention="14 days",
+    level="DEBUG",
+    encoding="utf-8",
+    format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {file}:{line} {function}() | {message}",
+    enqueue=True,
+    serialize=True,
+    backtrace=True,
+    diagnose=False,
+)
 
 
 # --- Functions related to mongodb ---
@@ -118,10 +133,9 @@ def delete_duplicates(target_collection: str):
     duplicates = collection.aggregate(pipeline)
 
     for duplicate in duplicates:
-        print(duplicate)
         article_url = duplicate["_id"]
         duplicate_ids = duplicate["ids"]
-        print(f"Duplicate article_url: {article_url}, count: {len(duplicate_ids)}")
+        logger.info(f"Duplicate article_url: {article_url}, count: {len(duplicate_ids)}")
 
         for id_to_delete in duplicate_ids[1:]:
             collection.delete_one({"_id": id_to_delete})
@@ -164,12 +178,12 @@ def parse_article(page_response: requests.models.Response) -> dict:
             article_timestamp = datetime.strptime(article_time, "%a %b %d %H:%M:%S %Y")
         except ValueError:
             # to handle: https://www.ptt.cc/bbs/HatePolitics/M.1694139970.A.129.html (only occurred once)
-            print("ERROR: === Article TIme -> Manually insert value ===")
+            # print("ERROR: === Article TIme -> Manually insert value ===")
             article_time = "Fri Sep 8 10:26:08 2023"
             article_timestamp = datetime.strptime(article_time, "%a %b %d %H:%M:%S %Y")
         localized_article_timestamp = taipei.localize(article_timestamp).timestamp()
     except IndexError as e:
-        print(f"{e}: article author, title and time is not found")
+        logger.exception(f"{e}: article author, title and time is not found")
         return {"error": "Not ordinary article"}
 
     main_content, article_ip = None, None
@@ -216,7 +230,7 @@ def parse_article(page_response: requests.models.Response) -> dict:
                             main_content = bottom_text[0].split(article_time)[1]
                             article_ip = bottom_text[1].split(" ")[0].strip()
     except IndexError as e:
-        print(f"Main content and Article IP error: {e}")
+        logger.exception(f"{e}: Main content and Article IP error")
 
     favor, against, arrow = 0, 0, 0
     comments = []
@@ -269,11 +283,18 @@ def parse_article(page_response: requests.models.Response) -> dict:
                             # to handle: https://www.ptt.cc/bbs/Gossiping/M.1694656103.A.27D.html
                             if article_timestamp is not None:
                                 comment_time = article_timestamp.strftime("%H:%M")
-
-                    comment_timestamp = datetime.strptime(
-                        f"{comment_date} {comment_time}", "%Y-%m-%d %H:%M"
-                    )
-                    localized_timestamp = taipei.localize(comment_timestamp)
+                    # to handle: https://www.ptt.cc/bbs/Gossiping/M.1692381678.A.441.html
+                    if comment_time == "2023-08-19 02:l1":
+                        comment_time = "2023-08-19 02:10"
+                    try:
+                        comment_timestamp = datetime.strptime(
+                            f"{comment_date} {comment_time}", "%Y-%m-%d %H:%M"
+                        )
+                        localized_timestamp = taipei.localize(comment_timestamp)
+                    except ValueError as e:
+                        # to handle: https://www.ptt.cc/bbs/HatePolitics/M.1574178562.A.4EE.html
+                        logger.exception(f"{e}: comment_timestamp error")
+                        continue
 
             comment_content = (
                 comment.find("span", class_="push-content").get_text().strip(": ")
@@ -315,7 +336,7 @@ def crawl_articles(base_url: str, start_page: int, pages: int):
     :return: list of articles
     """
     if pages > start_page:
-        print("Page Error!")
+        logger.info("Page Error: pages > start_page")
         return None
     else:
         headers = {"user-agent": ua.random}
@@ -343,7 +364,7 @@ def crawl_articles(base_url: str, start_page: int, pages: int):
                     start_idx = int(prev_idx) + 1 - (start_page - 1)
                     break
             except IndexError as e:
-                print(f"{e}: cannot find the previous page button.")
+                logger.exception(f"{e}: cannot find the previous page button.")
                 continue
 
         # if (BeautifulSoup(current_session.get(base_url[:-5] + str(start_idx) + ".html").text, "lxml")
@@ -353,6 +374,8 @@ def crawl_articles(base_url: str, start_page: int, pages: int):
         crawling_results = []
         idx_list = [i for i in range(start_idx, start_idx + pages)]
         for idx in idx_list:
+            num_insert, num_update, num_ignore = 0, 0, 0
+
             current_page_url = (
                 f"{base_url[:-5]}{idx}.html" if idx != latest_page else base_url
             )
@@ -373,9 +396,10 @@ def crawl_articles(base_url: str, start_page: int, pages: int):
                 else current_page_title_list
             )
 
-            print(
-                f"--- start crawling: page {idx} (current_page_url: {current_page_url}) ---"
+            logger.info(
+                f"-- start crawling: page {idx} (current_page_url: {current_page_url}) --"
             )
+
             for title in current_page_title_list_excluding_announcement:
                 title_link = title.find("a")
                 if title_link:
@@ -389,20 +413,31 @@ def crawl_articles(base_url: str, start_page: int, pages: int):
                     ):
                         for i in range(5):
                             try:
-                                if parse_article(current_session.get(article_url, headers=headers)) is not None:
+                                if (
+                                    parse_article(
+                                        current_session.get(
+                                            article_url, headers=headers
+                                        )
+                                    )
+                                    is not None
+                                ):
                                     break
                             except requests.exceptions.ConnectionError as e:
-                                print(
+                                logger.exception(
                                     f"{e}: cannot connect to the server - wait 60 seconds to restart."
                                 )
                                 time.sleep(60)
                                 headers = {"user-agent": ua.random}
                         parsing_result = parse_article(current_session.get(article_url))
                         if "error" in parsing_result.keys():
-                            print(parsing_result["error"])
-                            print(f"Error: {parsing_result['error']} - {article_url}.")
+                            logger.error(
+                                f"Error: {parsing_result['error']} - {article_url}."
+                            )
                             continue
-                        print(f"Insert Article {article_url}.")
+
+                        num_insert += 1
+                        logger.debug(f"Insert: {article_url}")
+
                         article_data = {
                             "article_page_idx": idx,
                             "article_url": article_url,
@@ -415,10 +450,14 @@ def crawl_articles(base_url: str, start_page: int, pages: int):
                         )
                         parsing_result = parse_article(current_session.get(article_url))
                         if "error" in parsing_result.keys():
-                            print(f"Error: {parsing_result['error']} - {article_url}.")
+                            logger.error(
+                                f"Error: {parsing_result['error']} - {article_url}."
+                            )
                             continue
                         if parsing_result["num_of_comment"] != num_comments:
-                            print(f"Update Article {article_url}.")
+                            num_update += 1
+                            logger.debug(f"Update: {article_url}")
+
                             update_article(
                                 target_collection=ptt_board,
                                 search_url=article_url,
@@ -426,12 +465,14 @@ def crawl_articles(base_url: str, start_page: int, pages: int):
                                 previous_num_comments=num_comments,
                             )
                         else:
-                            print(
-                                f"Ignore Article {article_url}. (for no changes have been made)"
-                            )
+                            num_ignore += 1
+                            logger.debug(f"Ignore: {article_url}")
                             continue
                 time.sleep(4.0)
-            print(f"--- finish crawling: page {idx} ---")
+            logger.info(
+                f"-- finish crawling: page {idx} [Insert: {num_insert}, Update: {num_update}, Ignore: {num_ignore}] --"
+            )
+
             time.sleep(9.0)
         return crawling_results
 
@@ -446,7 +487,7 @@ def crawl_ptt_latest(base_url: str, ptt_board: str):
 
 
 def crawl_ptt_history(base_url: str, ptt_board: str):
-    for i in range(5, 3000):
+    for i in range(5, 5000):
         crawl_results = crawl_articles(base_url, i, 1)
         if crawl_results:
             collection = db[ptt_board]
@@ -454,7 +495,7 @@ def crawl_ptt_history(base_url: str, ptt_board: str):
 
 
 def crawl_ptt_history_more_earlier(base_url: str, ptt_board: str):
-    for i in range(3000, 7000):
+    for i in range(5000, 12000):
         crawl_results = crawl_articles(base_url, i, 1)
         if crawl_results:
             collection = db[ptt_board]
@@ -484,7 +525,6 @@ def create_dag_historical_data(
 
     end = EmptyOperator(task_id="end", dag=dag)
 
-    # Define the task ordering
     start >> crawl >> end
 
     return dag
@@ -513,7 +553,6 @@ def create_dag_historical_data_more_earlier(
 
     end = EmptyOperator(task_id="end", dag=dag)
 
-    # Define the task ordering
     start >> crawl >> end
 
     return dag
@@ -556,7 +595,6 @@ def create_dag_latest_data(
 
     end = EmptyOperator(task_id="end", dag=dag)
 
-    # Define the task ordering
     start >> crawl >> check_ip >> remove_duplicate >> end
 
     return dag

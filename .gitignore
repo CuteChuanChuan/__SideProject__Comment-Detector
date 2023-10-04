@@ -17,6 +17,7 @@ resources/__pycache__/*.pyc
 */__pycache__
 log/
 server/cache-directory/
+server/log/
 
 students/.DS_Store
 students/Raymond/.DS_Store
