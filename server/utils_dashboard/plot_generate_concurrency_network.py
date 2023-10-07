@@ -78,15 +78,15 @@ def create_network_graph(
             colorscale="Blues",
             cmin=min(weights) * 100,
             cmax=max(weights) * 100,
-            colorbar=dict(title="共同出現次數"),
+            colorbar=dict(title="共同留言次數"),
             showscale=True,
         ),
     )
     board_name = "八卦" if board_name == "gossip" else "政黑"
     comment_type = "推文" if comment_type == "推" else "噓文"
     layout = go.Layout(
-        title=f"<{keyword}>相關文章留言數量前 {NUM_ARTICLES} 篇文章中，"
-        f"{comment_type}次數前 {num_commenters} 名的留言者帳號一起出現並留言的次數",
+        title=f"<{keyword}>相關文章留言數前 {NUM_ARTICLES} 篇"
+        f"{comment_type}次數前 {num_commenters} 名帳號的共同留言次數",
         showlegend=False,
         xaxis=dict(showticklabels=False, zeroline=False, showgrid=False),
         yaxis=dict(showticklabels=False, zeroline=False, showgrid=False),

@@ -46,35 +46,67 @@ def create_overview_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
 
     app.layout = dbc.Container(
         [
-            html.H1("PTT Comment Detector - Overview", className="text-center mb-4"),
+            html.H1("PTT Comment Detector - 趨勢分析", className="text-center mb-4"),
             html.Div(
                 [
                     html.A(
                         dbc.Button(
-                            "Go to Keyword",
+                            "關於",
                             outline=True,
                             color="primary",
                             className="mr-20",
-                            style={"color": "blue"},
+                            style={"color": "gray"},
+                        ),
+                        href="/dashboard",
+                        style={"marginRight": "15px"},
+                    ),
+                    html.A(
+                        dbc.Button(
+                            "趨勢分析",
+                            outline=True,
+                            color="primary",
+                            className="mr-20",
+                            style={"color": "black", "font-weight": "bold"},
+                        ),
+                        style={"marginRight": "15px"},
+                    ),
+                    html.A(
+                        dbc.Button(
+                            "關鍵字分析",
+                            outline=True,
+                            color="primary",
+                            className="mr-20",
+                            style={"color": "gray"},
                         ),
                         href="/keyword",
                         style={"marginRight": "15px"},
                     ),
                     html.A(
                         dbc.Button(
-                            "Go to Commenter",
+                            "留言者分析",
                             outline=True,
-                            color="secondary",
-                            className="ml-20",
-                            style={"color": "green"},
+                            color="primary",
+                            className="mr-20",
+                            style={"color": "gray"},
                         ),
                         href="/commenter",
+                        style={"marginRight": "15px"},
+                    ),
+                    html.A(
+                        dbc.Button(
+                            "開源資料 API",
+                            outline=True,
+                            color="primary",
+                            className="mr-20",
+                            style={"color": "gray"},
+                        ),
+                        href="/docs",
                     ),
                 ],
                 style={"textAlign": "center"},
             ),
             html.Hr(),
-            dbc.Row([dbc.Col(html.H3("Overview of Article, Comments, Accounts Collected", className="mb-4 pl-8 pr-8"))]),
+            dbc.Row([dbc.Col(html.H3("已收集的資料總量", className="mb-4 pl-8 pr-8"))]),
             dbc.Row(
                 [
                     dbc.Col(
@@ -82,43 +114,82 @@ def create_overview_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
                             id="loading-overview-info",
                             type="circle",
                             children=[
-                                dcc.Interval(id="interval-component", interval=20 * 1000, n_intervals=0),
+                                dcc.Interval(
+                                    id="interval-component",
+                                    interval=20 * 1000,
+                                    n_intervals=0,
+                                ),
                                 html.Div(id="live-update-text"),
                             ],
                         ),
                         width=12,
                     )
                 ],
-                className="mb-4 pl-8 pr-8"
+                className="mb-4 pl-8 pr-8",
             ),
             html.Hr(),
-            dbc.Row([dbc.Col(html.H3("Keywords of 2 Boards (Gossiping and Politics)"))]),
-            dbc.Row([dbc.Col(dcc.Dropdown(
-                id="dropdown",
-                options=[
-                    {"label": "昨天", "value": 1},
-                    {"label": "過去三天", "value": 3},
-                    {"label": "過去一週", "value": 7},
-                ],
-                value=1,
-            ), width=6)]),
+            dbc.Row([dbc.Col(html.H3("近期關鍵字趨勢"))]),
             dbc.Row(
                 [
-                    dbc.Col(dcc.Graph(id="gossips-title-keyword-barchart", style={"width": "100%"}), className="col-md-3"),
-                    dbc.Col(dcc.Graph(id="gossips-comments-keyword-barchart", style={"width": "100%"}), className="col-md-3"),
-                    dbc.Col(dcc.Graph(id="politic-title-keyword-barchart", style={"width": "100%"}), className="col-md-3"),
-                    dbc.Col(dcc.Graph(id="politic-comments-keyword-barchart", style={"width": "100%"}), className="col-md-3"),
+                    dbc.Col(
+                        dcc.Dropdown(
+                            id="dropdown",
+                            options=[
+                                {"label": "昨天", "value": 1},
+                                {"label": "過去三天", "value": 3},
+                                {"label": "過去一週", "value": 7},
+                            ],
+                            value=1,
+                        ),
+                        width=6,
+                    )
+                ]
+            ),
+            dbc.Row(
+                [
+                    dbc.Col(
+                        dcc.Graph(
+                            id="gossips-title-keyword-barchart", style={"width": "100%"}
+                        ),
+                        className="col-md-3",
+                    ),
+                    dbc.Col(
+                        dcc.Graph(
+                            id="gossips-comments-keyword-barchart",
+                            style={"width": "100%"},
+                        ),
+                        className="col-md-3",
+                    ),
+                    dbc.Col(
+                        dcc.Graph(
+                            id="politic-title-keyword-barchart", style={"width": "100%"}
+                        ),
+                        className="col-md-3",
+                    ),
+                    dbc.Col(
+                        dcc.Graph(
+                            id="politic-comments-keyword-barchart",
+                            style={"width": "100%"},
+                        ),
+                        className="col-md-3",
+                    ),
                 ],
-                className="mb-4 pl-8 pr-8"
+                className="mb-4 pl-8 pr-8",
             ),
             html.Hr(),
-            dbc.Row([dbc.Col(html.H3(f"The Top 10 Breaking and Popular Articles in the Gossiping Board"),
-                             className="mb-4 pl-8 pr-8")]),
+            dbc.Row(
+                [
+                    dbc.Col(
+                        html.H3(f"八卦版 | 爆卦和爆文 (留言非常熱絡) | 留言數前十名文章"),
+                        className="mb-4 pl-8 pr-8",
+                    )
+                ]
+            ),
             dbc.Row(
                 [
                     dbc.Col(
                         [
-                            html.H5(f"[八卦版] 爆卦類文章 - 留言數量前 {NUM_NEWS} 名"),
+                            html.H5(f"爆卦類文章"),
                             dash_table.DataTable(
                                 id="gossips-news-breaking",
                                 style_table={"width": "100%"},
@@ -174,7 +245,7 @@ def create_overview_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
                     ),
                     dbc.Col(
                         [
-                            html.H5(f"[八卦版] 爆文文章 (推 - 噓 >= 100) - 留言數量前 {NUM_NEWS} 名"),
+                            html.H5(f"爆文文章 (推 - 噓 >= 100)"),
                             dash_table.DataTable(
                                 id="gossips-news-popular",
                                 style_table={"width": "100%"},
@@ -227,187 +298,14 @@ def create_overview_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
                             ),
                         ],
                         width=6,
-                    )
+                    ),
                 ]
-            )
+            ),
+            html.Br(),
+            html.Br()
         ],
         fluid=True,
     )
-
-    # app.layout = html.Div(
-    #     [
-    #         html.H1("PTT Comment Detector - Overview", style={"textAlign": "center"}),
-    #         html.Hr(),
-    #         html.H3(f"Overview of Article, Comments, Accounts Collected"),
-    #         dcc.Loading(
-    #             id="loading-overview-info",
-    #             type="circle",
-    #             children=[
-    #                 dcc.Interval(
-    #                     id="interval-component", interval=20 * 1000, n_intervals=0
-    #                 ),
-    #                 html.Div(id="live-update-text"),
-    #             ],
-    #         ),
-    #         html.Br(),
-    #         html.Hr(),
-    #         html.H3(f"Keywords of 2 Boards (Gossiping and Politics)"),
-    #         dcc.Dropdown(
-    #             id="dropdown",
-    #             options=[
-    #                 {"label": "昨天", "value": 1},
-    #                 {"label": "過去三天", "value": 3},
-    #                 {"label": "過去一週", "value": 7},
-    #             ],
-    #             value=1,
-    #         ),
-    #         dcc.Loading(
-    #             id="loading-keyword-overview-info",
-    #             type="circle",
-    #             children=[
-    #                 html.Div(
-    #                     children=[
-    #                         dcc.Graph(
-    #                             id="gossips-title-keyword-barchart",
-    #                             style={"width": "25%", "display": "none"},
-    #                         ),
-    #                         dcc.Graph(
-    #                             id="gossips-comments-keyword-barchart",
-    #                             style={"width": "25%", "display": "none"},
-    #                         ),
-    #                         dcc.Graph(
-    #                             id="politic-title-keyword-barchart",
-    #                             style={"width": "25%", "display": "none"},
-    #                         ),
-    #                         dcc.Graph(
-    #                             id="politic-comments-keyword-barchart",
-    #                             style={"width": "25%", "display": "none"},
-    #                         ),
-    #                     ]
-    #                 ),
-    #             ],
-    #         ),
-    #         html.Hr(),
-    #         html.H3(f"The Top 10 Breaking and Popular Articles in the Gossiping Board"),
-    #         html.Div(
-    #             style={"display": "flex", "width": "100%"},
-    #             children=[
-    #                 html.Div(
-    #                     style={"width": "49.5%", "marginRight": "1%"},
-    #                     children=[
-    #                         html.H5(f"[八卦版] 爆卦類文章 - 留言數量前 {NUM_NEWS} 名"),
-    #                         dash_table.DataTable(
-    #                             id="gossips-news-breaking",
-    #                             style_table={"width": "100%"},
-    #                             style_cell={
-    #                                 "height": "auto",
-    #                                 "width": "150px",
-    #                                 "minWidth": "15px",
-    #                                 "maxWidth": "180px",
-    #                                 "whiteSpace": "normal",
-    #                             },
-    #                             style_header={"textAlign": "center"},
-    #                             style_cell_conditional=[
-    #                                 {
-    #                                     "if": {"column_id": "文章標題"},
-    #                                     "width": "400px",
-    #                                     "textAlign": "left",
-    #                                     "height": "auto",
-    #                                 },
-    #                                 {
-    #                                     "if": {"column_id": "作者"},
-    #                                     "width": "110px",
-    #                                     "textAlign": "left",
-    #                                     "height": "auto",
-    #                                 },
-    #                                 {
-    #                                     "if": {"column_id": "留言數"},
-    #                                     "width": "15px",
-    #                                     "textAlign": "right",
-    #                                     "height": "auto",
-    #                                 },
-    #                                 {
-    #                                     "if": {"column_id": "文章連結"},
-    #                                     "width": "350px",
-    #                                     "textAlign": "left",
-    #                                     "font_size": "12px",
-    #                                     "height": "auto",
-    #                                 },
-    #                             ],
-    #                             columns=[
-    #                                 {"name": i, "id": i, "presentation": "markdown"}
-    #                                 for i in update_breaking_news("gossip").columns
-    #                             ],
-    #                             markdown_options={"html": True},
-    #                             data=None,
-    #                         ),
-    #                         dcc.Interval(
-    #                             id="interval-component-table-breaking",
-    #                             interval=240 * 1000,
-    #                             n_intervals=0,
-    #                         ),
-    #                     ],
-    #                 ),
-    #                 html.Div(
-    #                     style={"width": "49.5%"},
-    #                     children=[
-    #                         html.H5(f"[八卦版] 爆文文章 (推 - 噓 >= 100) - 留言數量前 {NUM_NEWS} 名"),
-    #                         dash_table.DataTable(
-    #                             id="gossips-news-popular",
-    #                             style_table={"width": "100%"},
-    #                             style_cell={
-    #                                 "height": "auto",
-    #                                 "width": "150px",
-    #                                 "minWidth": "15px",
-    #                                 "maxWidth": "180px",
-    #                                 "whiteSpace": "normal",
-    #                             },
-    #                             style_header={"textAlign": "center"},
-    #                             style_cell_conditional=[
-    #                                 {
-    #                                     "if": {"column_id": "文章標題"},
-    #                                     "width": "400px",
-    #                                     "textAlign": "left",
-    #                                     "height": "auto",
-    #                                 },
-    #                                 {
-    #                                     "if": {"column_id": "作者"},
-    #                                     "width": "110px",
-    #                                     "textAlign": "left",
-    #                                     "height": "auto",
-    #                                 },
-    #                                 {
-    #                                     "if": {"column_id": "留言數"},
-    #                                     "width": "15px",
-    #                                     "textAlign": "right",
-    #                                     "height": "auto",
-    #                                 },
-    #                                 {
-    #                                     "if": {"column_id": "文章連結"},
-    #                                     "width": "350px",
-    #                                     "textAlign": "left",
-    #                                     "font_size": "12px",
-    #                                     "height": "auto",
-    #                                 },
-    #                             ],
-    #                             columns=[
-    #                                 {"name": i, "id": i, "presentation": "markdown"}
-    #                                 for i in update_popular_news("gossip").columns
-    #                             ],
-    #                             markdown_options={"html": True},
-    #                             data=None,
-    #                         ),
-    #                         dcc.Interval(
-    #                             id="interval-component-table-popular",
-    #                             interval=240 * 1000,
-    #                             n_intervals=0,
-    #                         ),
-    #                     ],
-    #                 ),
-    #             ],
-    #         ),
-    #     ]
-    # )
 
     @app.callback(
         Output("live-update-text", "children"),
@@ -424,7 +322,6 @@ def create_overview_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
             Output("gossips-comments-keyword-barchart", "figure"),
             Output("politic-title-keyword-barchart", "figure"),
             Output("politic-comments-keyword-barchart", "figure"),
-
         ],
         [Input("dropdown", "value")],
     )
@@ -446,7 +343,7 @@ def create_overview_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
             gossips_title_data,
             gossips_comments_data,
             politic_title_data,
-            politic_comments_data
+            politic_comments_data,
         )
 
     @app.callback(

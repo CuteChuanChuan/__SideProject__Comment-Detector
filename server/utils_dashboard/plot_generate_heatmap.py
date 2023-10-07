@@ -57,7 +57,7 @@ def heatmap_commenter_activities(account_id: str):
     ]
 
     layout = go.Layout(
-        title="Number of commenting behaviro per weekday &amp; time of day",
+        title="留言時段分佈",
         xaxis=dict(tickmode="linear"),
         shapes=[
             # Rectangle to highlight Monday to Friday, 08-18

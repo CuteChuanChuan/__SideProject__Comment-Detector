@@ -15,14 +15,6 @@ Personal Project (AppWorks School #21 Data Engineering)
 ### Objective: 
 ### Why use this?
 
-## <u>Database: Neo4j (NoSQL)</u>
-### Objective: 
-### Why use this?
-
-## <u>Database: PostgreSQL (SQL)</u>
-### Objective: 
-### Why use this?
-
 ## <u>Schedule: Airflow</u>
 ### Objective: 
 ### Why use this?
@@ -55,7 +47,9 @@ Personal Project (AppWorks School #21 Data Engineering)
 
 
 ## <u>Dashboard: Plotly Dash</u>
-### Objective: Show ETL results
+### Objective: 
+1. Create interactive interface for users to explore this product
+2. Create dashboards to demonstrate the product
 ### URL: http://3.106.78.149:8000/
 ### Why use this?
 

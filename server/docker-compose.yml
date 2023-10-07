@@ -1,0 +1,27 @@
+version: '3'
+services:
+  web:
+    image: "dashboard:1004-v1.0.0"
+    command: ["gunicorn", "main:app", "-k", "uvicorn.workers.UvicornWorker", "-w", "4", "--bind", "0.0.0.0:8000", "--timeout", "120", "--log-level", "debug"]
+    ports:
+      - "8000:8000"
+    networks:
+      - comment
+
+  redis:
+    image: "redis:latest"
+    ports:
+      - "6379:6379"
+    networks:
+      - comment
+
+  background:
+    image: "background:1004-v1.0.0"
+    command: ["uvicorn", "background_worker:app", "--host", "0.0.0.0", "--port", "8001"]
+    ports:
+      - "8001:8001"
+    networks:
+      - comment
+
+networks:
+  comment:
