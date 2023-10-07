@@ -42,94 +42,69 @@ def create_commenter_dash_app(requests_pathname_prefix: str = None) -> dash.Dash
     app.config.suppress_callback_exceptions = True
     dcc._js_dist[0]["external_url"] = "https://cdn.plot.ly/plotly-basic-latest.min.js"
 
-    # app.layout = html.Div(
-    #     [
-    #         html.H1("PTT Comment Detector - Commenter", style={"textAlign": "center"}),
-    #         html.Hr(),
-    #         html.H5(f"Please enter the commenter account id you want to search. "
-    #                 f"We will show some information about that account id"),
-    #         html.Div(
-    #             children=[
-    #                 dcc.Input(
-    #                     id="account-id",
-    #                     type="text",
-    #                     value="",
-    #                     placeholder="Enter Account ID",
-    #                     style={
-    #                         "display": "inline-block",
-    #                         "vertical-align": "middle",
-    #                         "margin-right": "10px",
-    #                     },
-    #                 ),
-    #                 html.Button(
-    #                     "Submit",
-    #                     id="submit-button-id",
-    #                     style={"display": "inline-block", "vertical-align": "middle"},
-    #                 ),
-    #             ]
-    #         ),
-    #         html.Br(),
-    #         html.Hr(),
-    #         html.Div(
-    #             children=[
-    #                 html.H6("Activity Graph (Area circled by red line is the working hours)",
-    #                         style={"display": "inline-block", "width": "49%"}),
-    #                 dcc.Loading(
-    #                     id="loading-account-activity-graph",
-    #                     type="circle",
-    #                     children=[
-    #                         dcc.Graph(id="activity-graph", style={"width": "49%", "display": "none"}),
-    #                     ],
-    #                 ),
-    #                 html.Br(),
-    #                 html.H6("Wordcloud Graph (Please wait since the system will analyze all comments of that account)",
-    #                         style={"display": "inline-block", "width": "49%"}),
-    #                 dcc.Loading(
-    #                     id="loading-account-wordcloud-graph",
-    #                     type="circle",
-    #                     children=[
-    #                         html.Img(id="wordcloud-graph", style={"width": "49%", "display": "none"}),
-    #                     ],
-    #                 ),
-    #             ]
-    #         ),
-    #     ]
-    # )
-
     app.layout = dbc.Container(
         [
-            html.H1("PTT Comment Detector - Commenter", className="text-center mb-4"),
+            html.H1("PTT Comment Detector - 留言者分析", className="text-center mb-4"),
             html.Div(
                 [
                     html.A(
                         dbc.Button(
-                            "Go to Overview",
+                            "關於",
+                            outline=True,
+                            color="primary",
+                            className="ml-20",
+                            style={"color": "gray"},
+                        ),
+                        href="/dashboard",
+                        style={"marginRight": "15px"},
+                    ),
+                    html.A(
+                        dbc.Button(
+                            "趨勢分析",
                             outline=True,
                             color="primary",
                             className="mr-20",
-                            style={"color": "blue"},
+                            style={"color": "gray"},
                         ),
                         href="/overview",
                         style={"marginRight": "15px"},
                     ),
                     html.A(
                         dbc.Button(
-                            "Go to Keyword",
+                            "關鍵字分析",
                             outline=True,
-                            color="secondary",
+                            color="primary",
                             className="ml-20",
-                            style={"color": "green"},
+                            style={"color": "gray"},
                         ),
                         href="/keyword",
+                        style={"marginRight": "15px"},
+                    ),
+                    html.A(
+                        dbc.Button(
+                            "留言者分析",
+                            outline=True,
+                            color="primary",
+                            className="ml-20",
+                            style={"color": "black", "font-weight": "bold"},
+                        ),
+                        style={"marginRight": "15px"},
+                    ),
+                    html.A(
+                        dbc.Button(
+                            "開源資料 API",
+                            outline=True,
+                            color="primary",
+                            className="ml-20",
+                            style={"color": "gray"},
+                        ),
+                        href="/docs",
                     ),
                 ],
                 style={"textAlign": "center"},
             ),
             html.Hr(),
-            html.H5(
-                f"Please enter the commenter account id you want to search. "
-                f"We will show some information about that account id"
-            ),
+            html.H5(f"留言者帳號搜尋", style={"font-weight": "bold"}),
             dbc.Row(
                 [
                     dbc.Col(
@@ -138,11 +113,11 @@ def create_commenter_dash_app(requests_pathname_prefix: str = None) -> dash.Dash
                                 id="account-id",
                                 type="text",
                                 value="",
-                                placeholder="Enter Account ID",
+                                placeholder="請輸入留言者帳號",
                                 className="mr-10",
                             ),
                             html.Button(
-                                "Submit",
+                                "確認",
                                 id="submit-button-id",
                             ),
                         ],
@@ -151,19 +126,15 @@ def create_commenter_dash_app(requests_pathname_prefix: str = None) -> dash.Dash
                     ),
                 ]
             ),
-            html.Hr(),
+            html.H6(f"此留言者在八卦版 & 政黑版的行為", style={"font-weight": "bold"}),
             dbc.Row(
                 [
                     dbc.Col(
-                        html.H6(
-                            "Activity Graph (Area circled by red line is the working hours)"
-                        ),
+                        html.H6("留言時段熱度圖 (紅色框選區域為上班時段)"),
                         width=6,
                     ),
                     dbc.Col(
-                        html.H6(
-                            "Wordcloud Graph (Please wait since the system will analyze all comments of that account)"
-                        ),
+                        html.H6("留言文字雲 (運算時間依留言數量而有所變化，請稍候)"),
                         width=6,
                     ),
                 ]

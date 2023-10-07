@@ -12,5 +12,5 @@ def generate_barchart_keywords(target_collection: str, n_days: int, source: str)
     fig = go.Figure()
     fig.add_trace(go.Bar(x=labels, y=values, marker=dict(color='rgb(55, 83, 109)')))
     board_info_zh = "八卦" if target_collection == "gossip" else "政黑"
-    fig.update_layout(title=f"{board_info_zh}版 過去{n_days}天 {source}中萃取出的{NUM_KEYWORDS}個關鍵字")
+    fig.update_layout(title=f"{board_info_zh}版 | 過去{n_days}天 | {source}的{NUM_KEYWORDS}個關鍵字")
     return fig

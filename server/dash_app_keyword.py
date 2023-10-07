@@ -59,28 +59,68 @@ def create_keyword_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
 
     app.layout = dbc.Container(
         [
-            html.H1("PTT Comment Detector - Keyword", className="text-center mb-4"),
+            html.H1("PTT Comment Detector - 關鍵字分析", className="text-center mb-4"),
             html.Div(
                 [
                     html.A(
                         dbc.Button(
-                            "Go to Overview", outline=True, color="primary", className="mr-20", style={"color": "blue"}
+                            "關於",
+                            outline=True,
+                            color="primary",
+                            className="ml-20",
+                            style={"color": "gray"},
                         ),
-                        href="/overview",
-                        style={"marginRight": "15px"}
-
+                        href="/dashboard",
+                        style={"marginRight": "15px"},
                     ),
                     html.A(
                         dbc.Button(
-                            "Go to Commenter", outline=True, color="secondary", className="ml-20", style={"color": "green"}
+                            "趨勢分析",
+                            outline=True,
+                            color="primary",
+                            className="mr-20",
+                            style={"color": "gray"},
                         ),
-                        href="/commenter"
+                        href="/overview",
+                        style={"marginRight": "15px"},
                     ),
-                ], style={"textAlign": "center"}
+                    html.A(
+                        dbc.Button(
+                            "關鍵字分析",
+                            outline=True,
+                            color="primary",
+                            className="mr-20",
+                            style={"color": "black", "font-weight": "bold"},
+                        ),
+                        style={"marginRight": "15px"},
+                    ),
+                    html.A(
+                        dbc.Button(
+                            "留言者分析",
+                            outline=True,
+                            color="primary",
+                            className="ml-20",
+                            style={"color": "gray"},
+                        ),
+                        href="/commenter",
+                        style={"marginRight": "15px"},
+                    ),
+                    html.A(
+                        dbc.Button(
+                            "開源資料 API",
+                            outline=True,
+                            color="primary",
+                            className="ml-20",
+                            style={"color": "gray"},
+                        ),
+                        href="/docs",
+                    ),
+                ],
+                style={"textAlign": "center"},
             ),
             html.Hr(),
             html.H5(
-                f"Please enter the keywords and select the board you want to search.",
+                f"關鍵字搜尋",
                 className="mb-3",
             ),
             dbc.Row(
@@ -91,13 +131,12 @@ def create_keyword_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
                                 id="keyword-search",
                                 type="text",
                                 value="",
-                                placeholder="Enter Keyword",
+                                placeholder="請輸入關鍵字",
                             ),
                         ],
                         width=2,
                         className="mb-2 ml-4",
-                        style={"marginRight": "10px"}
-
+                        style={"marginRight": "10px"},
                     ),
                     dbc.Col(
                         [
@@ -111,12 +150,12 @@ def create_keyword_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
                             ),
                         ],
                         width=2,
-                        className="mb-2 mr-20"
+                        className="mb-2 mr-20",
                     ),
                     dbc.Col(
                         [
                             html.Button(
-                                "Submit",
+                                "確認",
                                 id="submit-button-keyword",
                                 disabled=False,
                             ),
@@ -128,7 +167,7 @@ def create_keyword_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
                 className="mb-3",
             ),
             html.Hr(),
-            html.H5(f"Some highly active commenters' account id", className="mb-3"),
+            html.H5(f"有關這個關鍵字的文章，最活躍的留言者為：", className="mb-3"),
             dcc.Loading(
                 id="loading-keyword-info",
                 type="circle",
@@ -141,7 +180,7 @@ def create_keyword_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
             html.Br(),
             html.Hr(),
             html.H5(
-                f"The concurrency (connection) between these accounts will be shown below",
+                f"活躍留言者一起留言的關係圖 (Concurrency Analysis)：",
                 className="mb-3",
             ),
             dbc.Row(
@@ -150,13 +189,19 @@ def create_keyword_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
                         dcc.Loading(
                             id="loading-network-like-graph",
                             type="circle",
-                            children=[dcc.Graph(id="article-network-like-graph",
-                                                style={"width": "50%", "display": "none"},
-                                                figure={
-                                                    "data": [],
-                                                    "layout": {"xaxis": {"visible": False}, "yaxis": {"visible": False}},
-                                                }
-                                                )],
+                            children=[
+                                dcc.Graph(
+                                    id="article-network-like-graph",
+                                    style={"width": "50%", "display": "none"},
+                                    figure={
+                                        "data": [],
+                                        "layout": {
+                                            "xaxis": {"visible": False},
+                                            "yaxis": {"visible": False},
+                                        },
+                                    },
+                                )
+                            ],
                         ),
                         width=6,
                     ),
@@ -164,13 +209,19 @@ def create_keyword_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
                         dcc.Loading(
                             id="loading-network-dislike-graph",
                             type="circle",
-                            children=[dcc.Graph(id="article-network-dislike-graph",
-                                                style = {"width": "50%", "display": "none"},
-                                                figure = {
-                                                    "data": [],
-                                                    "layout": {"xaxis": {"visible": False}, "yaxis": {"visible": False}},
-                                                }
-                                                )],
+                            children=[
+                                dcc.Graph(
+                                    id="article-network-dislike-graph",
+                                    style={"width": "50%", "display": "none"},
+                                    figure={
+                                        "data": [],
+                                        "layout": {
+                                            "xaxis": {"visible": False},
+                                            "yaxis": {"visible": False},
+                                        },
+                                    },
+                                )
+                            ],
                         ),
                         width=6,
                     ),
@@ -178,99 +229,7 @@ def create_keyword_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
             ),
         ],
         fluid=True,
-        className="my-4",
     )
-
-    # app.layout = html.Div(
-    # [
-    #     html.H1("PTT Comment Detector - Keyword", style={"textAlign": "center"}),
-    #     html.Hr(),
-    #     html.H5(f"Please enter the keywords and select the board you want to search."),
-    #     html.Div(
-    #         children=[
-    #             dcc.Input(
-    #                 id="keyword-search",
-    #                 type="text",
-    #                 value="",
-    #                 placeholder="Enter Keyword",
-    #                 style={
-    #                     "display": "inline-block",
-    #                     "vertical-align": "middle",
-    #                     "margin-right": "10px",
-    #                 },
-    #             ),
-    #             dcc.Dropdown(
-    #                 id="dropdown-collection",
-    #                 options=[
-    #                     {"label": "八卦版", "value": "gossip"},
-    #                     {"label": "政黑版", "value": "politics"},
-    #                 ],
-    #                 value="gossip",
-    #                 style={
-    #                     "display": "inline-block",
-    #                     "vertical-align": "middle",
-    #                     "width": "150px",
-    #                     "margin-right": "10px",
-    #                 },
-    #             ),
-    #             html.Button(
-    #                 "Submit",
-    #                 id="submit-button-keyword",
-    #                 disabled=False,
-    #                 style={"display": "inline-block", "vertical-align": "middle"},
-    #             ),
-    #         ]
-    #     ),
-    #     html.Hr(),
-    #     html.H5(f"Some highly active commenters' account id"),
-    #     dcc.Loading(
-    #         id="loading-keyword-info",
-    #         type="circle",
-    #         children=[
-    #             html.Div(id="keyword-freq", style={"display": "none"}),
-    #             html.Div(id="keyword-agree", style={"display": "none"}),
-    #             html.Div(id="keyword-disagree", style={"display": "none"}),
-    #         ],
-    #     ),
-    #     html.Hr(),
-    #     html.H5(
-    #         f"The concurrency (connection) between these accounts will be shown below"
-    #     ),
-    #     html.Div(
-    #         children=[
-    #             # html.H6(
-    #             #     f"Concurrency Network Among Top {NUM_NETWORK_COMMENTERS} Commenters "
-    #             #     f"Whose Commenters Show Liking in Related Article",
-    #             # ),
-    #             dcc.Loading(
-    #                 id="loading-network-like-graph",
-    #                 type="circle",
-    #                 children=[
-    #                     dcc.Graph(
-    #                         id="article-network-like-graph",
-    #                         style={"width": "75%", "display": "none"},
-    #                     ),
-    #                 ],
-    #             ),
-    #             # html.H6(
-    #             #     f"Concurrency Network Among Top {NUM_NETWORK_COMMENTERS} Commenters "
-    #             #     f"Whose Commenters Show Dis-liking in Related Article",
-    #             # ),
-    #             dcc.Loading(
-    #                 id="loading-network-dislike-graph",
-    #                 type="circle",
-    #                 children=[
-    #                     dcc.Graph(
-    #                         id="article-network-dislike-graph",
-    #                         style={"width": "75%", "display": "none"},
-    #                     ),
-    #                 ],
-    #             ),
-    #         ]
-    #     ),
-    # ]
-    # )
-
 
     @app.callback(
         [
@@ -362,8 +321,10 @@ def create_keyword_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
     def update_commenter_network_graph(n_clicks, keyword_search, dropdown_collection):
         if n_clicks is None or not keyword_search:
             return (
-                dash.no_update, {"width": "100%", "display": "none"},
-                dash.no_update, {"width": "100%", "display": "none"}
+                dash.no_update,
+                {"width": "100%", "display": "none"},
+                dash.no_update,
+                {"width": "100%", "display": "none"},
             )
         temp_collection_id, board_name, keyword = preparation_network_graph(
             keyword=keyword_search, target_collection=dropdown_collection

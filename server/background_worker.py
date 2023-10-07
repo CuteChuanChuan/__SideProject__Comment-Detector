@@ -1,16 +1,25 @@
+import os
+import json
 import time
 import pytz
+import logging
 import uvicorn
 from loguru import logger
 from fastapi import FastAPI
 from datetime import datetime
+import google.cloud.logging
+from dotenv import load_dotenv
+from google.cloud import storage
+from google.oauth2.service_account import Credentials
 from apscheduler.schedulers.background import BackgroundScheduler
 from utils_dashboard.func_get_keyword_from_text import store_top_n_keywords
-from utils_dashboard.utils_mongodb import (store_articles_count_sum,
-                                           store_comments_count_sum,
-                                           store_accounts_count_sum,
-                                           store_past_n_days_article_title,
-                                           store_past_n_days_comments)
+from utils_dashboard.utils_mongodb import (
+    store_articles_count_sum,
+    store_comments_count_sum,
+    store_accounts_count_sum,
+    store_past_n_days_article_title,
+    store_past_n_days_comments,
+)
 
 app = FastAPI()
 scheduler = BackgroundScheduler()
@@ -29,10 +38,24 @@ logger.add(
     diagnose=False,
 )
 
+load_dotenv(verbose=True)
+key_content = json.loads(os.getenv("LOGGER_KEY"))
+credentials = Credentials.from_service_account_info(key_content)
+
+client = google.cloud.logging.Client(credentials=credentials)
+client.setup_logging()
+# cloud_logger = client.logger(name="redis_update")
+
+# structured_logger = google.cloud.logging.handlers.StructuredLogHandler()
+
+redis_update_crawled_data_logger = logging.getLogger("redis_update_crawled_data_logger")
+
 
 def update_overview_crawled_data():
     try:
-        logger.opt(lazy=True, colors=True).info(f"<blue>Start - update overview crawled data</blue>")
+        logger.opt(lazy=True, colors=True).info(
+            f"<blue>Start - update overview crawled data</blue>"
+        )
         start = time.time()
         store_articles_count_sum()
         logger.opt(lazy=True).info("Updated - articles count")
@@ -41,14 +64,22 @@ def update_overview_crawled_data():
         store_accounts_count_sum()
         logger.opt(lazy=True).info("Updated - accounts count")
         end = time.time() - start
-        logger.opt(lazy=True, colors=True).info(f"<blue>Finish - update overview crawled data (Time: {end})</blue>")
+        logger.opt(lazy=True, colors=True).info(
+            f"<blue>Finish - update overview crawled data (Time: {end})</blue>"
+        )
+        crawled_data_update_info = {"crawled_update_time": end}
+        # cloud_logger.log(json.dumps(crawled_data_update_info))
+        # cloud_logger.log(end)
+        redis_update_crawled_data_logger.info(json.dumps(crawled_data_update_info))
     except Exception as e:
         logger.error(e)
 
 
 def update_keywords_trends():
     try:
-        logger.opt(lazy=True, colors=True).info(f"<blue>Start - update keywords trends</blue>")
+        logger.opt(lazy=True, colors=True).info(
+            f"<blue>Start - update keywords trends</blue>"
+        )
         start = time.time()
         store_past_n_days_article_title()
         logger.opt(lazy=True).info("Updated - past n days article title")
@@ -57,7 +88,9 @@ def update_keywords_trends():
         store_top_n_keywords()
         logger.opt(lazy=True).info("Updated - trends of keywords")
         end = time.time() - start
-        logger.opt(lazy=True, colors=True).info(f"<blue>Finish - update keywords trends (Time: {end})</blue>")
+        logger.opt(lazy=True, colors=True).info(
+            f"<blue>Finish - update keywords trends (Time: {end})</blue>"
+        )
     except Exception as e:
         logger.error(e)
 
@@ -65,7 +98,11 @@ def update_keywords_trends():
 scheduler.add_job(update_overview_crawled_data, "interval", seconds=120)
 scheduler.add_job(
     update_keywords_trends,
-    trigger="cron", hour=0, minute=0, timezone=pytz.timezone("Asia/Taipei"))
+    trigger="cron",
+    hour=0,
+    minute=0,
+    timezone=pytz.timezone("Asia/Taipei"),
+)
 # scheduler.add_job(update_keywords_trends, "interval", seconds=60)
 
 if __name__ == "__main__":
