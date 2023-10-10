@@ -51,7 +51,7 @@ class AllowedBoard(str, enum.Enum):
 #     return app
 
 
-@app.get(path="/", response_class=HTMLResponse)
+@app.get(path="/", response_class=HTMLResponse, include_in_schema=False)
 def home(request: Request):
     data = {"page": "Home Page"}
     return templates.TemplateResponse("index.html", {"request": request, "data": data})
@@ -163,7 +163,7 @@ def get_commenter_ids_by_ipaddress(
     }
 
 
-@app.get(path="/dashboard", response_class=HTMLResponse)
+@app.get(path="/dashboard", response_class=HTMLResponse, include_in_schema=False)
 def dashboard():
     html_content = """
         <!DOCTYPE html>
