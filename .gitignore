@@ -18,6 +18,12 @@ resources/__pycache__/*.pyc
 log/
 server/cache-directory/
 server/log/
+key/
+
+
+config/
+config/*.json
+
 
 students/.DS_Store
 students/Raymond/.DS_Store

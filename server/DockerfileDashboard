@@ -1,0 +1,10 @@
+FROM python:3.11
+RUN apt-get update && apt-get install -y \
+    gcc \
+    libc-dev \
+    libffi-dev \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /server
+COPY . .
+RUN pip install -r requirements.txt
+CMD ["gunicorn", "main:app", "-k", "uvicorn.workers.UvicornWorker", "-w", "4", "--bind", "0.0.0.0:8000", "--timeout", "120", "--log-level", "debug"]
