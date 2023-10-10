@@ -19,8 +19,10 @@ log/
 server/cache-directory/
 server/log/
 key/
-*.json
-key/*.json
+
+
+config/
+config/*.json
 
 
 students/.DS_Store

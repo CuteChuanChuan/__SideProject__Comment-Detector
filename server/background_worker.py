@@ -49,6 +49,7 @@ client.setup_logging()
 # structured_logger = google.cloud.logging.handlers.StructuredLogHandler()
 
 redis_update_crawled_data_logger = logging.getLogger("redis_update_crawled_data_logger")
+redis_update_keyword_data_logger = logging.getLogger("redis_update_keyword_data_logger")
 
 
 def update_overview_crawled_data():
@@ -91,6 +92,8 @@ def update_keywords_trends():
         logger.opt(lazy=True, colors=True).info(
             f"<blue>Finish - update keywords trends (Time: {end})</blue>"
         )
+        keyword_data_update_info = {"keyword_update_time": end}
+        redis_update_keyword_data_logger.info(json.dumps(keyword_data_update_info))
     except Exception as e:
         logger.error(e)
 
@@ -99,7 +102,7 @@ scheduler.add_job(update_overview_crawled_data, "interval", seconds=120)
 scheduler.add_job(
     update_keywords_trends,
     trigger="cron",
-    hour=0,
+    hour="0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22",
     minute=0,
     timezone=pytz.timezone("Asia/Taipei"),
 )
