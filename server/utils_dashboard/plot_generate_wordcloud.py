@@ -34,7 +34,8 @@ def wordcloud_graph(account_id):
             if comment["commenter_id"] == account_id:
                 all_comments.append(comment["comment_content"])
 
-    comments_cleaned = [comment for comment in all_comments if "https://" not in comment]
+    # comments_cleaned = [comment for comment in all_comments if "https://" not in comment]
+    comments_cleaned = [comment for comment in all_comments if "http" not in comment]
 
     wc = WordCloud(
         font_path=TC_FONT_PATH,
