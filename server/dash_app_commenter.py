@@ -163,6 +163,7 @@ def create_commenter_dash_app(requests_pathname_prefix: str = None) -> dash.Dash
                                     id="wordcloud-graph",
                                     style={"width": "100%", "display": "none"},
                                 ),
+                                html.Div(id="no-data-text", style={"display": "none"}),
                             ],
                         ),
                         width=6,
@@ -174,16 +175,34 @@ def create_commenter_dash_app(requests_pathname_prefix: str = None) -> dash.Dash
     )
 
     @app.callback(
-        [Output("wordcloud-graph", "src"), Output("wordcloud-graph", "style")],
+        [
+            Output("wordcloud-graph", "src"),
+            Output("wordcloud-graph", "style"),
+            Output("no-data-text", "children"),
+            Output("no-data-text", "style"),
+        ],
         [Input("submit-button-id", "n_clicks")],
         [dash.dependencies.State("account-id", "value")],
     )
     def generate_wordcloud_graph(n_clicks, account_id):
         if n_clicks is None or not account_id:
-            return dash.no_update, {"display": "none"}
+            return dash.no_update, dash.no_update, dash.no_update, {"display": "none"}
 
         fig = wordcloud_graph(account_id=account_id)
-        return fig, {"width": "100%", "display": "block"}
+        if fig == "查無資料":
+            return (
+                dash.no_update,
+                {"display": "none"},
+                html.Div([html.Br(), html.Br(), html.Br(), html.Br(), html.Br(), html.Br(), html.Br(), html.Span("查無資料", style={"fontSize": "20px"})]),
+                {"display": "block", "textAlign": "center", "padding": "50px 0"},
+            )
+
+        return (
+            fig,
+            {"width": "100%", "display": "block"},
+            dash.no_update,
+            {"display": "none"},
+        )
 
     @app.callback(
         [Output("activity-graph", "figure"), Output("activity-graph", "style")],

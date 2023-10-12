@@ -20,13 +20,16 @@ def generate_concurrency_network_data(temp_collection_id: str, comment_type: str
     top_n_commenters, num_commenters = list_top_n_commenters_filtered_by_comment_type(
         temp_collection=temp_collection_id, comment_type=comment_type, num_commenters=num_commenters
     )
-    ids_combinations = generate_all_combinations(top_n_commenters)
-    concurrency_list = []
-    for combination in ids_combinations:
-        concurrency = compute_concurrency(
-            ids=combination, temp_collection=temp_collection_id, comment_type=comment_type)
-        concurrency_list.append(concurrency)
-    return concurrency_list
+    if len(top_n_commenters) > 0:
+        ids_combinations = generate_all_combinations(top_n_commenters)
+        concurrency_list = []
+        for combination in ids_combinations:
+            concurrency = compute_concurrency(
+                ids=combination, temp_collection=temp_collection_id, comment_type=comment_type)
+            concurrency_list.append(concurrency)
+        return concurrency_list
+    else:
+        return []
 
 
 def create_network_graph(
