@@ -24,9 +24,11 @@ current_time = datetime.now(current_timezone).replace(
     hour=0, minute=0, second=0, microsecond=0
 )
 
-redis_pool = redis.ConnectionPool(host=os.getenv("REDIS_HOST", "localhost"),
-                                  port=os.getenv("REDIS_PORT", 6379),
-                                  db=os.getenv("REDIS_DB", 0))
+redis_pool = redis.ConnectionPool(
+    host=os.getenv("REDIS_HOST", "localhost"),
+    port=os.getenv("REDIS_PORT", 6379),
+    db=os.getenv("REDIS_DB", 0),
+)
 redis_conn = redis.StrictRedis(connection_pool=redis_pool, decode_responses=True)
 
 
@@ -58,7 +60,9 @@ def store_articles_count_sum(max_retries: int = 5, delay: int = 2):
                 f"Attempt {trying + 1} of {max_retries}. Retrying in {delay} seconds."
             )
             if trying == max_retries:
-                raise e(f"Failed to set value of article counts sum in {max_retries} attempts")
+                raise e(
+                    f"Failed to set value of article counts sum in {max_retries} attempts"
+                )
             time.sleep(delay)
 
 
@@ -110,7 +114,9 @@ def store_comments_count_sum(max_retries: int = 5, delay: int = 2):
                 f"Attempt {trying + 1} of {max_retries}. Retrying in {delay} seconds."
             )
             if trying == max_retries:
-                raise e(f"Failed to set value of comments counts sum in {max_retries} attempts")
+                raise e(
+                    f"Failed to set value of comments counts sum in {max_retries} attempts"
+                )
             time.sleep(delay)
 
 
@@ -129,17 +135,26 @@ def count_accounts(target_collection: str) -> int:
     """
 
     author_pipeline = [
-        {"$group": {"_id": None, "unique_authors": {"$addToSet": "$article_data.author"}}}
+        {
+            "$group": {
+                "_id": None,
+                "unique_authors": {"$addToSet": "$article_data.author"},
+            }
+        }
     ]
     authors_result = list(db[target_collection].aggregate(author_pipeline))
-    unique_authors = set(authors_result[0]["unique_authors"]) if authors_result else set()
+    unique_authors = (
+        set(authors_result[0]["unique_authors"]) if authors_result else set()
+    )
 
     commenter_pipeline = [
         {"$unwind": "$article_data.comments"},
         {
             "$group": {
                 "_id": None,
-                "unique_commenters": {"$addToSet": "$article_data.comments.commenter_id"},
+                "unique_commenters": {
+                    "$addToSet": "$article_data.comments.commenter_id"
+                },
             }
         },
     ]
@@ -168,7 +183,9 @@ def store_accounts_count_sum(max_retries: int = 5, delay: int = 2):
                 f"Attempt {trying + 1} of {max_retries}. Retrying in {delay} seconds."
             )
             if trying == max_retries:
-                raise e(f"Failed to set value of accounts counts sum in {max_retries} attempts")
+                raise e(
+                    f"Failed to set value of accounts counts sum in {max_retries} attempts"
+                )
             time.sleep(delay)
 
 
@@ -267,12 +284,20 @@ def store_past_n_days_article_title():
     collections = ["gossip", "gossip", "gossip", "politics", "politics", "politics"]
     past_n_days = [1, 3, 7, 1, 3, 7]
     for i in zip(collections, past_n_days):
-        title_results = get_past_n_days_article_title(target_collection=i[0], n_days=i[1])
-        redis_conn.set(f"past_n_days_article_title_{i[0]}_{i[1]}", json.dumps(title_results))
+        title_results = get_past_n_days_article_title(
+            target_collection=i[0], n_days=i[1]
+        )
+        redis_conn.set(
+            f"past_n_days_article_title_{i[0]}_{i[1]}", json.dumps(title_results)
+        )
 
 
 def retrieve_past_n_days_article_title(target_collection: str, n_days: int):
-    return json.loads(redis_conn.get(f"past_n_days_article_title_{target_collection}_{n_days}").decode("utf-8"))
+    return json.loads(
+        redis_conn.get(
+            f"past_n_days_article_title_{target_collection}_{n_days}"
+        ).decode("utf-8")
+    )
 
 
 def get_past_n_days_comments(target_collection: str, n_days: int) -> list[dict]:
@@ -311,11 +336,17 @@ def store_past_n_days_comments():
     past_n_days = [1, 3, 7, 1, 3, 7]
     for i in zip(collections, past_n_days):
         comments_results = get_past_n_days_comments(target_collection=i[0], n_days=i[1])
-        redis_conn.set(f"past_n_days_comments_{i[0]}_{i[1]}", json.dumps(comments_results))
+        redis_conn.set(
+            f"past_n_days_comments_{i[0]}_{i[1]}", json.dumps(comments_results)
+        )
 
 
 def retrieve_past_n_days_comments(target_collection: str, n_days: int):
-    return json.loads(redis_conn.get(f"past_n_days_comments_{target_collection}_{n_days}").decode("utf-8"))
+    return json.loads(
+        redis_conn.get(f"past_n_days_comments_{target_collection}_{n_days}").decode(
+            "utf-8"
+        )
+    )
 
 
 # Section: operations about accounts
@@ -347,19 +378,24 @@ def extract_all_articles_commenter_involved(
 
 
 def extract_top_n_articles_author_published(
-        target_collection: str, author_account: str, num_articles: int
+    target_collection: str, author_account: str, num_articles: int
 ) -> list[dict]:
     pattern = "^" + author_account
-    cursor = (db[target_collection]
-              .find({"article_data.author": {"$regex": pattern}},
-                    {"_id": 0, "article_url": 1, "article_data.title": 1},)
-              .sort("article_data.num_of_comment", -1).limit(num_articles))
+    cursor = (
+        db[target_collection]
+        .find(
+            {"article_data.author": {"$regex": pattern}},
+            {"_id": 0, "article_url": 1, "article_data.title": 1},
+        )
+        .sort("article_data.num_of_comment", -1)
+        .limit(num_articles)
+    )
     articles_collection = []
     for article in cursor:
         articles_collection.append(
             {
                 "article_url": article["article_url"],
-                "article_title": article["article_data"]["title"]
+                "article_title": article["article_data"]["title"],
             }
         )
     return articles_collection
@@ -388,16 +424,20 @@ def extract_top_n_articles_keyword_in_title(
     return articles_collection
 
 
-def extract_commenters_id_using_same_ipaddress(
-    target_collection: str, ipaddress: str
-):
+def extract_commenters_id_using_same_ipaddress(target_collection: str, ipaddress: str):
     pipeline = [
         {"$match": {"article_data.comments.commenter_ip": ipaddress}},
         {"$unwind": "$article_data.comments"},
         {"$match": {"article_data.comments.commenter_ip": ipaddress}},
         {"$project": {"commenter_id": "$article_data.comments.commenter_id", "_id": 0}},
         {"$group": {"_id": "$commenter_id", "ipaddress_usage_count": {"$sum": 1}}},
-        {"$project": {"commenter_account": "$_id", "ipaddress_usage_count": 1, "_id": 0}},
+        {
+            "$project": {
+                "commenter_account": "$_id",
+                "ipaddress_usage_count": 1,
+                "_id": 0,
+            }
+        },
         {"$sort": {"ipaddress_usage_count": -1}},
     ]
     result = db[target_collection].aggregate(pipeline)
@@ -525,29 +565,59 @@ def convert_commenters_metadata_to_dataframe(commenter_metadata: dict) -> pd.Dat
 
 
 def extract_top_freq_commenter_id(meta_df: pd.DataFrame, num_commenters: int) -> list:
-    return (
+    commenters_id = (
         meta_df.sort_values("freq", ascending=False)
         .head(num_commenters)["commenter_id"]
         .to_list()
     )
+    commenters_freq = (
+        meta_df.sort_values("freq", ascending=False)
+        .head(num_commenters)["freq"]
+        .to_list()
+    )
+    results = [
+        f"{commenter_id} ({int(commenter_freq)} 次)"
+        for commenter_id, commenter_freq in zip(commenters_id, commenters_freq)
+    ]
+    return results
 
 
 def extract_top_agree_commenter_id(meta_df: pd.DataFrame, num_commenters: int) -> list:
-    return (
+    commenters_id = (
         meta_df.sort_values("agree", ascending=False)
         .head(num_commenters)["commenter_id"]
         .to_list()
     )
+    commenters_freq = (
+        meta_df.sort_values("agree", ascending=False)
+        .head(num_commenters)["agree"]
+        .to_list()
+    )
+    results = [
+        f"{commenter_id} ({int(commenter_freq)} 次)"
+        for commenter_id, commenter_freq in zip(commenters_id, commenters_freq)
+    ]
+    return results
 
 
 def extract_top_disagree_commenter_id(
     meta_df: pd.DataFrame, num_commenters: int
 ) -> list:
-    return (
+    commenters_id = (
         meta_df.sort_values("disagree", ascending=False)
         .head(num_commenters)["commenter_id"]
         .to_list()
     )
+    commenters_freq = (
+        meta_df.sort_values("disagree", ascending=False)
+        .head(num_commenters)["disagree"]
+        .to_list()
+    )
+    results = [
+        f"{commenter_id} ({int(commenter_freq)} 次)"
+        for commenter_id, commenter_freq in zip(commenters_id, commenters_freq)
+    ]
+    return results
 
 
 def extract_top_short_comment_latency_commenter_id(

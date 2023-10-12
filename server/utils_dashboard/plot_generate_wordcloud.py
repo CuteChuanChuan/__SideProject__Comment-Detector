@@ -1,3 +1,4 @@
+from loguru import logger
 from wordcloud import WordCloud
 from .config_dashboard import db
 
@@ -36,17 +37,18 @@ def wordcloud_graph(account_id):
 
     # comments_cleaned = [comment for comment in all_comments if "https://" not in comment]
     comments_cleaned = [comment for comment in all_comments if "http" not in comment]
+    if len(comments_cleaned) > 0:
+        wc = WordCloud(
+            font_path=TC_FONT_PATH,
+            margin=2,
+            background_color="white",
+            max_font_size=150,
+            width=980,
+            height=600,
+        ).generate(" ".join(comments_cleaned))
 
-    wc = WordCloud(
-        font_path=TC_FONT_PATH,
-        margin=2,
-        background_color="white",
-        max_font_size=150,
-        width=980,
-        height=600,
-    ).generate(" ".join(comments_cleaned))
-
-    return wc.to_image()
+        return wc.to_image()
+    return "查無資料"
 
 
 if __name__ == "__main__":

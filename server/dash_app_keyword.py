@@ -38,6 +38,24 @@ NUM_NETWORK_COMMENTERS = 20
 external_stylesheets = ["https://codepen.io/chriddyp/pen/bWLwgP.css"]
 
 
+def keyword_no_result_figure():
+    return {
+        "layout": {
+            "xaxis": {"visible": False, "range": [0, 1]},
+            "yaxis": {"visible": False, "range": [0, 1]},
+            "annotations": [
+                {
+                    "text": "查無資料",
+                    "xref": "paper",
+                    "yref": "paper",
+                    "showarrow": False,
+                    "font": {"size": 20},
+                }
+            ],
+        }
+    }
+
+
 def create_keyword_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
     app = dash.Dash(
         __name__,
@@ -168,6 +186,14 @@ def create_keyword_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
             ),
             html.Hr(),
             html.H5(f"有關這個關鍵字的文章，最活躍的留言者為：", className="mb-3"),
+            html.H6(
+                "(說明：此部分是考量所有與關鍵字有關的文章，因此此處呈現的留言者不一定會在下方留言數量前100名中的文章中留言)",
+                className="mb-3",
+            ),
+            html.H6(
+                "(說明：留言共有三種類型，分別為：推、-> (單純回文)、噓)",
+                className="mb-3",
+            ),
             dcc.Loading(
                 id="loading-keyword-info",
                 type="circle",
@@ -181,6 +207,26 @@ def create_keyword_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
             html.Hr(),
             html.H5(
                 f"活躍留言者一起留言的關係圖 (Concurrency Analysis)：",
+                className="mb-3",
+            ),
+            html.H6(
+                "(概念：網軍或是帶風向的人通常會比較活躍，也會利用從眾心態，一起在共同的文章中留言，來影響其他人的看法)",
+                className="mb-3",
+            ),
+            html.H6(
+                "(分析步驟 1 [活躍程度]：針對留言數最多的前100篇文章，找出推/噓文次數前20名的留言者)",
+                className="mb-3",
+            ),
+            html.H6(
+                "(分析步驟 2 [共同出現]：針對這些留言者，檢視他們在這100篇文章中一起留言的次數)",
+                className="mb-3",
+            ),
+            html.H6(
+                "(解讀 1：紅點是留言者，紅點間的藍線是兩個留言者共同留言的次數，藍線越粗越深代表共同出現次數越多)",
+                className="mb-3",
+            ),
+            html.H6(
+                "(解讀 2：可以將焦點鎖定在經常一起出現的留言者，並搭配分析個別留言者的行為特徵與開源資料API中的IP地址分析來綜合檢視，最終給出您自己心中的判斷)",
                 className="mb-3",
             ),
             dbc.Row(
@@ -239,7 +285,6 @@ def create_keyword_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
             Output("keyword-agree", "style"),
             Output("keyword-disagree", "children"),
             Output("keyword-disagree", "style"),
-            Output("submit-button-keyword", "disabled"),
         ],
         [Input("submit-button-keyword", "n_clicks")],
         [
@@ -248,9 +293,7 @@ def create_keyword_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
         ],
     )
     def generate_keyword_mata_table(n_clicks, keyword_search, dropdown_collection):
-        disabled_status = True
         if n_clicks is None or not keyword_search:
-            disabled_status = False
             return (
                 dash.no_update,
                 {"display": "none"},
@@ -258,51 +301,61 @@ def create_keyword_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
                 {"display": "none"},
                 dash.no_update,
                 {"display": "none"},
-                disabled_status,
             )
         articles_relevant = extract_author_info_from_articles_title_having_keywords(
             target_collection=dropdown_collection,
             keyword=keyword_search,
             num_articles=NUM_ARTICLES,
         )
-        all_commenters_descriptive_info = defaultdict(lambda: defaultdict(float))
-        for article in articles_relevant:
-            raw_commenters_info = extract_commenter_info_from_article_with_article_url(
-                target_collection=dropdown_collection, article_data=article
+        if len(articles_relevant) > 0:
+            all_commenters_descriptive_info = defaultdict(lambda: defaultdict(float))
+            for article in articles_relevant:
+                raw_commenters_info = (
+                    extract_commenter_info_from_article_with_article_url(
+                        target_collection=dropdown_collection, article_data=article
+                    )
+                )
+                all_commenters_descriptive_info = summarize_commenters_metadata(
+                    raw_commenters_info, all_commenters_descriptive_info
+                )
+
+            df = convert_commenters_metadata_to_dataframe(
+                all_commenters_descriptive_info
             )
-            all_commenters_descriptive_info = summarize_commenters_metadata(
-                raw_commenters_info, all_commenters_descriptive_info
+            top_freq_commenters = extract_top_freq_commenter_id(
+                df, num_commenters=NUM_COMMENTERS
+            )
+            top_agree_commenters = extract_top_agree_commenter_id(
+                df, num_commenters=NUM_COMMENTERS
+            )
+            top_disagree_commenters = extract_top_disagree_commenter_id(
+                df, num_commenters=NUM_COMMENTERS
             )
 
-        df = convert_commenters_metadata_to_dataframe(all_commenters_descriptive_info)
-        top_freq_commenters = extract_top_freq_commenter_id(
-            df, num_commenters=NUM_COMMENTERS
-        )
-        top_agree_commenters = extract_top_agree_commenter_id(
-            df, num_commenters=NUM_COMMENTERS
-        )
-        top_disagree_commenters = extract_top_disagree_commenter_id(
-            df, num_commenters=NUM_COMMENTERS
-        )
-
-        top_freq_commenters = ", ".join(
-            [commenter for commenter in top_freq_commenters]
-        )
-        top_agree_commenters = ", ".join(
-            [commenter for commenter in top_agree_commenters]
-        )
-        top_disagree_commenters = ", ".join(
-            [commenter for commenter in top_disagree_commenters]
-        )
-        disabled_status = False
+            top_freq_commenters = ", ".join(
+                [commenter for commenter in top_freq_commenters]
+            )
+            top_agree_commenters = ", ".join(
+                [commenter for commenter in top_agree_commenters]
+            )
+            top_disagree_commenters = ", ".join(
+                [commenter for commenter in top_disagree_commenters]
+            )
+            return (
+                html.H6(f"留言次數最高的 {NUM_COMMENTERS} 位留言者: {top_freq_commenters}"),
+                {"display": "block"},
+                html.H6(f"推文次數最高的 {NUM_COMMENTERS} 位留言者: {top_agree_commenters}"),
+                {"display": "block"},
+                html.H6(f"噓文次數最高的 {NUM_COMMENTERS} 位留言者: {top_disagree_commenters}"),
+                {"display": "block"},
+            )
         return (
-            html.H6(f"留言次數最高的 {NUM_COMMENTERS} 位留言者: {top_freq_commenters}"),
+            html.H6(f""),
             {"display": "block"},
-            html.H6(f"推文次數最高的 {NUM_COMMENTERS} 位留言者: {top_agree_commenters}"),
+            html.H6(f"查無資料"),
             {"display": "block"},
-            html.H6(f"噓文次數最高的 {NUM_COMMENTERS} 位留言者: {top_disagree_commenters}"),
+            html.H6(f""),
             {"display": "block"},
-            disabled_status,
         )
 
     @app.callback(
@@ -339,20 +392,24 @@ def create_keyword_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
             comment_type="噓",
             num_commenters=NUM_NETWORK_COMMENTERS,
         )
-        like_graph = create_network_graph(
-            concurrency_list=data_like,
-            board_name=board_name,
-            keyword=keyword,
-            num_commenters=NUM_NETWORK_COMMENTERS,
-            comment_type="推",
-        )
-        dislike_graph = create_network_graph(
-            concurrency_list=data_dislike,
-            board_name=board_name,
-            keyword=keyword,
-            num_commenters=NUM_NETWORK_COMMENTERS,
-            comment_type="噓",
-        )
+        if len(data_like) > 0:
+            like_graph = create_network_graph(
+                concurrency_list=data_like,
+                board_name=board_name,
+                keyword=keyword,
+                num_commenters=NUM_NETWORK_COMMENTERS,
+                comment_type="推",
+            )
+            dislike_graph = create_network_graph(
+                concurrency_list=data_dislike,
+                board_name=board_name,
+                keyword=keyword,
+                num_commenters=NUM_NETWORK_COMMENTERS,
+                comment_type="噓",
+            )
+        else:
+            like_graph = keyword_no_result_figure()
+            dislike_graph = keyword_no_result_figure()
         db[temp_collection_id].drop()
 
         return (
