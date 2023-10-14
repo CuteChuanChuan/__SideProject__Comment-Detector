@@ -3,7 +3,7 @@ import dash
 from dash import html, dcc
 import uvicorn
 import dash_bootstrap_components as dbc
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi import FastAPI, Query, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.wsgi import WSGIMiddleware
@@ -53,8 +53,7 @@ class AllowedBoard(str, enum.Enum):
 
 @app.get(path="/", response_class=HTMLResponse, include_in_schema=False)
 def home(request: Request):
-    data = {"page": "Home Page"}
-    return templates.TemplateResponse("index.html", {"request": request, "data": data})
+    return RedirectResponse("/dashboard")
 
 
 @app.get(
