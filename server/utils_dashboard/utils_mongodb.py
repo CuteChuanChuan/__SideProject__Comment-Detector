@@ -28,6 +28,7 @@ redis_pool = redis.ConnectionPool(
     host=os.getenv("REDIS_HOST", "localhost"),
     port=os.getenv("REDIS_PORT", 6379),
     db=os.getenv("REDIS_DB", 0),
+    password=os.getenv("REDIS_PASSWORD", None),
 )
 redis_conn = redis.StrictRedis(connection_pool=redis_pool, decode_responses=True)
 
