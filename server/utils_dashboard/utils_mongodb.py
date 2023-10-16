@@ -6,18 +6,29 @@ import pytz
 import time
 import json
 import redis
+import logging
 import pandas as pd
 from uuid import uuid4
-from dotenv import load_dotenv
-from itertools import combinations
+from loguru import logger
+import google.cloud.logging
 from typing import Tuple, Any
-from datetime import datetime, timedelta
+from dotenv import load_dotenv
 from .config_dashboard import db
-
-load_dotenv(verbose=True)
+from itertools import combinations
+from datetime import datetime, timedelta
+from google.oauth2.service_account import Credentials
+from google.cloud.logging.handlers import CloudLoggingHandler
 
 BATCH_SIZE = 10000
 NUM_ARTICLES = 100
+
+load_dotenv(verbose=True)
+# key_content = json.loads(os.getenv("LOGGER_KEY"))
+# credentials = Credentials.from_service_account_info(key_content)
+#
+# client = google.cloud.logging.Client(credentials=credentials)
+# client.setup_logging()
+# redis_connection_logger = logging.getLogger("redis_connection_logger")
 
 current_timezone = pytz.timezone("Asia/Taipei")
 current_time = datetime.now(current_timezone).replace(
@@ -29,8 +40,16 @@ redis_pool = redis.ConnectionPool(
     port=os.getenv("REDIS_PORT", 6379),
     db=os.getenv("REDIS_DB", 0),
     password=os.getenv("REDIS_PASSWORD", None),
+    socket_timeout=10,
+    socket_connect_timeout=10,
 )
 redis_conn = redis.StrictRedis(connection_pool=redis_pool, decode_responses=True)
+
+# log_content = {
+#         "redis_info": redis_conn.info(),
+# }
+# logger.info(json.dumps(log_content))
+# logger.info(log_content)
 
 
 # Section: overall information about crawling data (used in dashboard)
@@ -71,6 +90,10 @@ def retrieve_articles_count_sum():
     """
     retrieve the total number of articles of mongodb from Redis
     """
+    log_content = {
+        "redis_info": redis_conn.info(),
+    }
+    logger.info(json.dumps(log_content))
     return json.loads(redis_conn.get("total_articles").decode("utf-8"))
 
 
