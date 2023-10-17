@@ -1,10 +1,7 @@
 import os
 import enum
-import dash
 import redis
-from dash import html, dcc
 import uvicorn
-import dash_bootstrap_components as dbc
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi import FastAPI, Query, Request
 from fastapi.templating import Jinja2Templates
@@ -21,7 +18,7 @@ app = FastAPI(
     title="PTT Comment Detector",
     version="0.1.0",
     summary="PTT Comment Detector is a tool to provide users information "
-            "for judging credibility of comments on PTT (The largest forum in Taiwan).",
+    "for judging credibility of comments on PTT (The largest forum in Taiwan).",
 )
 templates = Jinja2Templates(directory="templates")
 limiter = Limiter(key_func=get_remote_address)
@@ -60,9 +57,11 @@ def home(request: Request):
 def get_commenter_articles(
     request: Request,
     commenter_id: str,
-    target_collection: AllowedBoard = Query(default_value="gossip",
-                                            description="Target collection name can only be 'gossip' or 'politics'",
-                                            default="gossip",)
+    target_collection: AllowedBoard = Query(
+        default_value="gossip",
+        description="Target collection name can only be 'gossip' or 'politics'",
+        default="gossip",
+    ),
 ):
     all_articles = op_mongo.extract_all_articles_commenter_involved(
         target_collection, commenter_id
@@ -95,7 +94,7 @@ def get_author_articles(
     if len(author_id.split(" ")) != 1:
         return {
             "error": "Please only enter author account id without space and brackets (e.g., ABC (Nickname) "
-                     "-> please only enter ABC)"
+            "-> please only enter ABC)"
         }
     all_articles = op_mongo.extract_top_n_articles_author_published(
         target_collection, author_id, num_articles=20
@@ -145,7 +144,7 @@ def get_commenter_ids_by_ipaddress(
         default_value="gossip",
         description="Target collection name can only be 'gossip' or 'politics'.",
         default="gossip",
-    )
+    ),
 ):
     all_commenters_id = op_mongo.extract_commenters_id_using_same_ipaddress(
         target_collection, ipaddress

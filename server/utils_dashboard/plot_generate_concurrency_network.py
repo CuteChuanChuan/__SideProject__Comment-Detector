@@ -1,10 +1,13 @@
 import networkx as nx
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
-from utils_dashboard.utils_mongodb import (query_articles_store_temp_collection,
-                                           list_top_n_commenters_filtered_by_comment_type,
-                                           generate_all_combinations, compute_concurrency,
-                                           weight_to_color)
+from utils_dashboard.utils_mongodb import (
+    query_articles_store_temp_collection,
+    list_top_n_commenters_filtered_by_comment_type,
+    generate_all_combinations,
+    compute_concurrency,
+    weight_to_color,
+)
 
 NUM_ARTICLES = 100
 
@@ -16,16 +19,23 @@ def preparation_network_graph(keyword: str, target_collection: str):
     return temp_collection_id, board_name, keyword
 
 
-def generate_concurrency_network_data(temp_collection_id: str, comment_type: str, num_commenters: int):
+def generate_concurrency_network_data(
+    temp_collection_id: str, comment_type: str, num_commenters: int
+):
     top_n_commenters, num_commenters = list_top_n_commenters_filtered_by_comment_type(
-        temp_collection=temp_collection_id, comment_type=comment_type, num_commenters=num_commenters
+        temp_collection=temp_collection_id,
+        comment_type=comment_type,
+        num_commenters=num_commenters,
     )
     if len(top_n_commenters) > 0:
         ids_combinations = generate_all_combinations(top_n_commenters)
         concurrency_list = []
         for combination in ids_combinations:
             concurrency = compute_concurrency(
-                ids=combination, temp_collection=temp_collection_id, comment_type=comment_type)
+                ids=combination,
+                temp_collection=temp_collection_id,
+                comment_type=comment_type,
+            )
             concurrency_list.append(concurrency)
         return concurrency_list
     else:
@@ -33,21 +43,24 @@ def generate_concurrency_network_data(temp_collection_id: str, comment_type: str
 
 
 def create_network_graph(
-        concurrency_list: list[tuple], board_name: str, keyword: str, num_commenters: int, comment_type: str
+    concurrency_list: list[tuple],
+    board_name: str,
+    keyword: str,
+    num_commenters: int,
+    comment_type: str,
 ) -> go.Figure:
-
     g = nx.Graph()
     for data in concurrency_list:
         source, target, weight = data
         g.add_edge(source, target, weight=weight)
-    
+
     pos = nx.spring_layout(g)
     node_x = [pos[node][0] for node in g.nodes()]
     node_y = [pos[node][1] for node in g.nodes()]
     weights = [g.edges[edge]["weight"] for edge in g.edges()]
-    
+
     sorted_edges = sorted(g.edges(data=True), key=lambda x: x[2]["weight"])
-    
+
     edge_traces = []
     for edge_data in sorted_edges:
         edge = edge_data[:2]
@@ -63,7 +76,7 @@ def create_network_graph(
                 mode="lines",
             )
         )
-    
+
     node_trace = go.Scatter(
         x=node_x,
         y=node_y,
@@ -72,7 +85,7 @@ def create_network_graph(
         marker=dict(size=10, color="red"),
         hoverinfo="text",
     )
-    
+
     color_bar_trace = go.Scatter(
         x=[None],
         y=[None],

@@ -302,7 +302,7 @@ def create_overview_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
                 ]
             ),
             html.Br(),
-            html.Br()
+            html.Br(),
         ],
         fluid=True,
     )

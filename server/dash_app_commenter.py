@@ -193,7 +193,18 @@ def create_commenter_dash_app(requests_pathname_prefix: str = None) -> dash.Dash
             return (
                 dash.no_update,
                 {"display": "none"},
-                html.Div([html.Br(), html.Br(), html.Br(), html.Br(), html.Br(), html.Br(), html.Br(), html.Span("查無資料", style={"fontSize": "20px"})]),
+                html.Div(
+                    [
+                        html.Br(),
+                        html.Br(),
+                        html.Br(),
+                        html.Br(),
+                        html.Br(),
+                        html.Br(),
+                        html.Br(),
+                        html.Span("查無資料", style={"fontSize": "20px"}),
+                    ]
+                ),
                 {"display": "block", "textAlign": "center", "padding": "50px 0"},
             )
 

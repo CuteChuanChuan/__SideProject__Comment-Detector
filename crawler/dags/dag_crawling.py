@@ -152,7 +152,9 @@ def delete_duplicates(target_collection: str):
     for duplicate in duplicates:
         article_url = duplicate["_id"]
         duplicate_ids = duplicate["ids"]
-        logger.info(f"Duplicate article_url: {article_url}, count: {len(duplicate_ids)}")
+        logger.info(
+            f"Duplicate article_url: {article_url}, count: {len(duplicate_ids)}"
+        )
 
         for id_to_delete in duplicate_ids[1:]:
             collection.delete_one({"_id": id_to_delete})
@@ -344,7 +346,9 @@ def parse_article(page_response: requests.models.Response) -> dict:
     return article_info
 
 
-def crawl_articles(base_url: str, start_page: int, pages: int, crawling_logger: logging.Logger = None):
+def crawl_articles(
+    base_url: str, start_page: int, pages: int, crawling_logger: logging.Logger = None
+):
     """
     crawl articles from ptt
     :param base_url: original url
@@ -487,14 +491,14 @@ def crawl_articles(base_url: str, start_page: int, pages: int, crawling_logger: 
                             logger.debug(f"Ignore: {article_url}")
                             continue
                 time.sleep(4.0)
-            crawling_logs = {"crawler": crawling_logger.name,
-                             "current_page_url": current_page_url,
-                             "crawling_data_insert": num_insert,
-                             "crawling_data_update": num_update,
-                             "crawling_data_ignore": num_ignore}
-            crawling_logger.info(
-                json.dumps(crawling_logs)
-            )
+            crawling_logs = {
+                "crawler": crawling_logger.name,
+                "current_page_url": current_page_url,
+                "crawling_data_insert": num_insert,
+                "crawling_data_update": num_update,
+                "crawling_data_ignore": num_ignore,
+            }
+            crawling_logger.info(json.dumps(crawling_logs))
             # logger.info(
             #     f"-- finish crawling: page {idx} [Insert: {num_insert}, Update: {num_update}, Ignore: {num_ignore}] --"
             # )
@@ -529,7 +533,10 @@ def crawl_ptt_history_more_earlier(base_url: str, ptt_board: str, logger_assigne
 
 
 def create_dag_historical_data(
-    dag_id: str, schedule_interval: Union[str, timedelta], base_url: str, logger_assigned
+    dag_id: str,
+    schedule_interval: Union[str, timedelta],
+    base_url: str,
+    logger_assigned,
 ):
     ptt_board = "gossip" if "Gossiping" in base_url else "politics"
 
@@ -557,7 +564,10 @@ def create_dag_historical_data(
 
 
 def create_dag_historical_data_more_earlier(
-    dag_id: str, schedule_interval: Union[str, timedelta], base_url: str, logger_assigned
+    dag_id: str,
+    schedule_interval: Union[str, timedelta],
+    base_url: str,
+    logger_assigned,
 ):
     ptt_board = "gossip" if "Gossiping" in base_url else "politics"
 
@@ -585,7 +595,10 @@ def create_dag_historical_data_more_earlier(
 
 
 def create_dag_latest_data(
-    dag_id: str, schedule_interval: Union[str, timedelta], base_url: str, logger_assigned
+    dag_id: str,
+    schedule_interval: Union[str, timedelta],
+    base_url: str,
+    logger_assigned,
 ):
     ptt_board = "gossip" if "Gossiping" in base_url else "politics"
 
@@ -630,42 +643,42 @@ dag_gossips_history = create_dag_historical_data(
     dag_id="crawl_ptt_gossips_history",
     schedule_interval=timedelta(days=1),
     base_url="https://www.ptt.cc/bbs/Gossiping/index.html",
-    logger_assigned=crawler_gossip_earlier
+    logger_assigned=crawler_gossip_earlier,
 )
 
 dag_politic_history = create_dag_historical_data(
     dag_id="crawl_ptt_politic_history",
     schedule_interval=timedelta(days=1),
     base_url="https://www.ptt.cc/bbs/HatePolitics/index.html",
-    logger_assigned=crawler_politic_earlier
+    logger_assigned=crawler_politic_earlier,
 )
 
 dag_gossips_latest = create_dag_latest_data(
     dag_id="crawl_ptt_gossips_latest",
     schedule_interval="*/10 * * * *",
     base_url="https://www.ptt.cc/bbs/Gossiping/index.html",
-    logger_assigned=crawler_gossip_latest
+    logger_assigned=crawler_gossip_latest,
 )
 
 dag_politic_latest = create_dag_latest_data(
     dag_id="crawl_ptt_politic_latest",
     schedule_interval="*/10 * * * *",
     base_url="https://www.ptt.cc/bbs/HatePolitics/index.html",
-    logger_assigned=crawler_politic_latest
+    logger_assigned=crawler_politic_latest,
 )
 
 dag_gossips_history_more_earlier = create_dag_historical_data_more_earlier(
     dag_id="crawl_ptt_gossips_history_more_earlier",
     schedule_interval=timedelta(days=1),
     base_url="https://www.ptt.cc/bbs/Gossiping/index.html",
-    logger_assigned=crawler_gossip_much_earlier
+    logger_assigned=crawler_gossip_much_earlier,
 )
 
 dag_politic_history_more_earlier = create_dag_historical_data_more_earlier(
     dag_id="crawl_ptt_politic_history_more_earlier",
     schedule_interval=timedelta(days=1),
     base_url="https://www.ptt.cc/bbs/HatePolitics/index.html",
-    logger_assigned=crawler_politic_much_earlier
+    logger_assigned=crawler_politic_much_earlier,
 )
 
 # if __name__ == "__main__":

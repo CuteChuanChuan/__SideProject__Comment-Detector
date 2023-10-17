@@ -1,5 +1,9 @@
 from dash import html
-from .utils_mongodb import retrieve_articles_count_sum, retrieve_comments_count_sum, retrieve_accounts_count_sum
+from .utils_mongodb import (
+    retrieve_articles_count_sum,
+    retrieve_comments_count_sum,
+    retrieve_accounts_count_sum,
+)
 
 
 def update_layout():
