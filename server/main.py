@@ -1,9 +1,11 @@
+import os
 import enum
 import dash
+import redis
 from dash import html, dcc
 import uvicorn
 import dash_bootstrap_components as dbc
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi import FastAPI, Query, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.wsgi import WSGIMiddleware
@@ -26,35 +28,28 @@ limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+# Connect to redis as long as users enter the home page
+# so that when they visit the trend page, the data of crawled articles can be shown immediately
+# rather than reloading the whole page
+redis_pool = redis.ConnectionPool(
+    host=os.getenv("REDIS_HOST", "localhost"),
+    port=os.getenv("REDIS_PORT", 6379),
+    db=os.getenv("REDIS_DB", 0),
+    password=os.getenv("REDIS_PASSWORD", None),
+    socket_timeout=10,
+    socket_connect_timeout=10,
+)
+redis_conn = redis.StrictRedis(connection_pool=redis_pool, decode_responses=True)
+
 
 class AllowedBoard(str, enum.Enum):
     gossip = "gossip"
     politics = "politics"
 
 
-# def create_main_dash_app():
-#     app = dash.Dash(__name__,
-#                     external_stylesheets=[dbc.themes.BOOTSTRAP],
-#                     requests_pathname_prefix='/dashboard/',
-#                     suppress_callback_exceptions=True)
-#
-#     tabs = dbc.Tabs(
-#         [
-#             dbc.Tab(label="Overview", children=overview_app.layout),
-#             dbc.Tab(label="Keyword", children=keyword_app.layout),
-#             dbc.Tab(label="Commenter", children=commenter_app.layout)
-#         ]
-#     )
-#
-#     app.layout = dbc.Container([tabs], className="mt-3")
-#
-#     return app
-
-
 @app.get(path="/", response_class=HTMLResponse, include_in_schema=False)
 def home(request: Request):
-    data = {"page": "Home Page"}
-    return templates.TemplateResponse("index.html", {"request": request, "data": data})
+    return RedirectResponse("/dashboard")
 
 
 @app.get(

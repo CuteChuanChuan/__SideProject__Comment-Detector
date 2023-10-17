@@ -18,6 +18,10 @@ from config_crawl import default_args
 from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import PythonOperator
 
+import google.cloud.logging
+from google.cloud import storage
+from google.oauth2.service_account import Credentials
+
 load_dotenv(verbose=True)
 uri = os.getenv("ATLAS_URI", "None")
 client = MongoClient(uri)
@@ -39,6 +43,10 @@ logger.add(
     backtrace=True,
     diagnose=False,
 )
+gcp_key_path = os.environ.get("AIRFLOW__LOGGING__GOOGLE_KEY_PATH")
+credentials = Credentials.from_service_account_file(gcp_key_path)
+client = google.cloud.logging.Client(credentials=credentials)
+client.setup_logging()
 
 crawler_gossip_latest = logging.getLogger("crawler_gossip_latest")
 crawler_gossip_earlier = logging.getLogger("crawler_gossip_earlier")
