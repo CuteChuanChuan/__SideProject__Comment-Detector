@@ -1,12 +1,14 @@
 import networkx as nx
 import plotly.graph_objects as go
 from collections import defaultdict
-from utils_dashboard.utils_mongodb import (extract_author_info_from_articles_title_having_keywords,
-                                                  extract_commenter_info_from_article_with_article_url,
-                                                  summarize_commenters_metadata,
-                                                  convert_commenters_metadata_to_dataframe,
-                                                  extract_top_freq_commenter_id,
-                                                  check_commenter_in_article_filter_by_article_url)
+from utils_dashboard.utils_mongodb import (
+    extract_author_info_from_articles_title_having_keywords,
+    extract_commenter_info_from_article_with_article_url,
+    summarize_commenters_metadata,
+    convert_commenters_metadata_to_dataframe,
+    extract_top_freq_commenter_id,
+    check_commenter_in_article_filter_by_article_url,
+)
 
 
 def draw_network_2d(article_author_data: list, keyword: str, num_articles: int):
@@ -18,7 +20,9 @@ def draw_network_2d(article_author_data: list, keyword: str, num_articles: int):
             print(f"---commenter: {i} ---")
             g.add_node(i, node_type="commenter")
             if check_commenter_in_article_filter_by_article_url(
-                target_collection="gossip", commenter_id=i, article_url=article_author[2]
+                target_collection="gossip",
+                commenter_id=i,
+                article_url=article_author[2],
             ):
                 g.add_edges_from([(article_author[0], i)])
 
@@ -104,7 +108,7 @@ if __name__ == "__main__":
     raw_article_info = extract_author_info_from_articles_title_having_keywords(
         target_collection="gossip", keyword=keyword, num_articles=num_articles
     )
-    
+
     # Rationale: extract all commenters from articles selected in above
     all_commenters_descriptive_info = defaultdict(lambda: defaultdict(float))
     for article in raw_article_info:
@@ -114,9 +118,9 @@ if __name__ == "__main__":
         all_commenters_descriptive_info = summarize_commenters_metadata(
             raw_commenters_info, all_commenters_descriptive_info
         )
-    
+
     df = convert_commenters_metadata_to_dataframe(all_commenters_descriptive_info)
-    
+
     organized_authors_info = [
         (
             author["article_data"]["author"],
@@ -126,8 +130,10 @@ if __name__ == "__main__":
         )
         for author in raw_article_info
     ]
-    
+
     commenters = extract_top_freq_commenter_id(df, 5)
 
-    network_plot = draw_network_2d(article_author_data=organized_authors_info, keyword="雞蛋", num_articles=400)
+    network_plot = draw_network_2d(
+        article_author_data=organized_authors_info, keyword="雞蛋", num_articles=400
+    )
     network_plot.show()
