@@ -16,7 +16,7 @@
       runs-on: ubuntu-22.04
       steps:
         - name: Checkout code
-          uses: actions/checkout@2
+          uses: actions/checkout@v2
 
         - name: Authorize
           uses: 'google-github-actions/auth@v0'
