@@ -5,7 +5,6 @@
       branches:
         - main
         - develop
-        - cicd/deploy
     workflow_dispatch:
 
 
@@ -14,31 +13,24 @@
 
   jobs:
     server-deploy:
-      permissions:
-        contents: read
-        id-token: write
       runs-on: ubuntu-22.04
       steps:
         - name: Checkout code
-          uses: actions/checkout@v3
+          uses: actions/checkout@v2
 
         - name: Authorize
           uses: 'google-github-actions/auth@v0'
           with:
-            workload_identity_provider: 'projects/315948348563/locations/global/workloadIdentityPools/workload-detector'
-            service_account: 'cd-deploy@comment-detector-400115.iam.gserviceaccount.com'
+            credentials_json: ${{ secrets.GCE_SA_KEY }}
 
         - name: Compute SSH
-          id: compute-ssh
-          uses: 'google-github-actions/ssh-compute@v0'
+          uses: appleboy/ssh-action@master
           with:
-            instance_name: testing-for-deploy
-            zone: asia-east1-b
-            ssh_private_key: ${{ secrets.GCP_SSH_PRIVATE_KEY }}
-            command: 'echo Hello world'
-
-        - name: Test
-          run: |-
-            echo '${{ steps.compute-ssh.outputs.stdout }}'
-            echo '${{ steps.compute-ssh.outputs.stderr }}'
+            host: ${{ secrets.SSH_HOST }}
+            username: ${{ secrets.SSH_USER }}
+            key: ${{ secrets.SSH_KEY }}
+            port: ${{ secrets.SSH_PORT }}
+            script: |
+              cd /home/raymond
+              mkdir test-folder
 
