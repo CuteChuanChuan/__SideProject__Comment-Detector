@@ -377,14 +377,14 @@ def extract_all_articles_commenter_involved(
         )
         .batch_size(BATCH_SIZE)
     )
-    articles_collection = []
-    for article in cursor:
-        articles_collection.append(
-            {
-                "article_url": article["article_url"],
-                "article_title": article["article_data"]["title"],
-            }
-        )
+    articles_collection = [
+        {
+            "article_url": article["article_url"],
+            "article_title": article["article_data"]["title"],
+        }
+        for article in cursor
+    ]
+
     return articles_collection
 
 
@@ -401,14 +401,13 @@ def extract_top_n_articles_author_published(
         .sort("article_data.num_of_comment", -1)
         .limit(num_articles)
     )
-    articles_collection = []
-    for article in cursor:
-        articles_collection.append(
-            {
-                "article_url": article["article_url"],
-                "article_title": article["article_data"]["title"],
-            }
-        )
+    articles_collection = [
+        {
+            "article_url": article["article_url"],
+            "article_title": article["article_data"]["title"],
+        }
+        for article in cursor
+    ]
     return articles_collection
 
 
@@ -424,14 +423,13 @@ def extract_top_n_articles_keyword_in_title(
         .sort("article_data.num_of_comment", -1)
         .limit(num_articles)
     )
-    articles_collection = []
-    for article in cursor:
-        articles_collection.append(
-            {
-                "article_url": article["article_url"],
-                "article_title": article["article_data"]["title"],
-            }
-        )
+    articles_collection = [
+        {
+            "article_url": article["article_url"],
+            "article_title": article["article_data"]["title"],
+        }
+        for article in cursor
+    ]
     return articles_collection
 
 

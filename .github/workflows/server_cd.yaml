@@ -1,0 +1,33 @@
+  name: server-deploy
+
+  on:
+    push:
+      branches:
+        - main
+        - develop
+    workflow_dispatch:
+
+
+  env:
+    PROJECT_ID: ${{ secrets.GCE_PROJECT }}
+
+  jobs:
+    server-deploy:
+      runs-on: ubuntu-22.04
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@2
+
+        - name: Authorize
+          uses: 'google-github-actions/auth@v0'
+          with:
+            credentials_json: ${{ secrets.GCE_SA_KEY }}
+
+        - name: Compute SSH
+          uses: 'google-github-actions/ssh-compute@v0'
+          with:
+            instance_name: testing-for-deploy
+            zone: asia-east1-b
+            ssh_private_key: ${{ secrets.GCP_SSH_PRIVATE_KEY }}
+            command: 'echo Hello world'
+
