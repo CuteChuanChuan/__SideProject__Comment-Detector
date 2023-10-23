@@ -18,11 +18,6 @@
         - name: Checkout code
           uses: actions/checkout@v2
 
-        - name: Authorize
-          uses: 'google-github-actions/auth@v0'
-          with:
-            credentials_json: ${{ secrets.GCE_SA_KEY }}
-
         - name: Compute SSH
           uses: appleboy/ssh-action@master
           with:
