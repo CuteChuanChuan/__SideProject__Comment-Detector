@@ -98,7 +98,6 @@ def create_network_graph(
             showscale=True,
         ),
     )
-    board_name = "八卦" if board_name == "gossip" else "政黑"
     comment_type = "推文" if comment_type == "推" else "噓文"
     layout = go.Layout(
         title=f"<{keyword}>相關文章留言數前 {NUM_ARTICLES} 篇"

@@ -4,10 +4,6 @@ from utils_dashboard.func_get_keyword_from_text import (
     retrieve_top_n_keywords,
     NUM_KEYWORDS,
 )
-from utils_dashboard.utils_mongodb import (
-    get_past_n_days_article_title,
-    get_past_n_days_comments,
-)
 
 
 def generate_barchart_keywords(
