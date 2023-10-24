@@ -1,0 +1,31 @@
+  name: server-deploy
+
+  on:
+    push:
+      branches:
+        - main
+        - develop
+    workflow_dispatch:
+
+
+  env:
+    PROJECT_ID: ${{ secrets.GCE_PROJECT }}
+
+  jobs:
+    server-deploy:
+      runs-on: ubuntu-22.04
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@v2
+
+        - name: Compute SSH
+          uses: appleboy/ssh-action@master
+          with:
+            host: ${{ secrets.SSH_HOST }}
+            username: ${{ secrets.SSH_USER }}
+            key: ${{ secrets.SSH_KEY }}
+            port: ${{ secrets.SSH_PORT }}
+            script: |
+              cd /home/raymond
+              mkdir test-folder
+

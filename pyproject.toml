@@ -36,6 +36,8 @@ apscheduler = "^3.10.4"
 dash-bootstrap-components = "^1.5.0"
 slowapi = "^0.1.8"
 gunicorn = "^21.2.0"
+configparser = "^6.0.0"
+pytest-cov = "^4.1.0"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -44,3 +46,8 @@ black = "^23.9.1"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+pythonpath = [
+  "."
+]
