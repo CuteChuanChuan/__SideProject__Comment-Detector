@@ -8,6 +8,7 @@
 *.log
 .idea/
 trying/
+tests/testing_html/*
 
 */.DS_Store
 .env

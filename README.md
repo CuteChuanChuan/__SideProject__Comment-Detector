@@ -1,19 +1,43 @@
 # Comment-Detector
-Personal Project (AppWorks School #21 Data Engineering)
 
-# Data
-## Source
+## Question:
+- Are there any cyber warriors (網軍) or individuals manipulating public opinions (帶風向) on Taiwan's forums?
+- Can they be detected? 
+- Can I provide information to users to help them form their own judgments?
+- Apart from IP addresses, which are widely used but influenced by various factors, are there other methods or perspectives that can be used?
+
+## Objective:
+- Identify alternative methods to detect cyber warriors and those manipulating public opinions.
+- Analyze data and offer objective information to users, enabling them to form their own judgments.
+- Ultimately, enhance the information-receiving experience for users.
+
+## Approaches:
+1. Focus primarily on PTT (Taiwan's largest forum):
+   1. Gossiping, which has the largest number of users.
+   2. HatePolitics, which is highly related to politics.
+2. Gather and cleanse articles and comments.
+3. Analyze data using metrics like keywords, concurrency, and word clouds to obtain deeper insights.
+4. Visualize the findings with graphs and tables.
+5. Offer APIs for interested parties.
+
+## Architecture
+![Architecture](Architecture.png)
+
+## Data
+### Source
 - PTT - Gossiping
 - PTT - HatePolitics
 
-## Extraction
-- requests + beautifulsoup
+### ETL
+- Extract: web crawling (requests + beautifulsoup)
+- Transform: python
+- Load: MongoDB
 
 
-# Tools and Skills
-## <u>Database: MongoDB (NoSQL)</u>
-### Objective: 
-### Why use this?
+## Tools and Techniques
+### <u>Database: MongoDB</u>
+#### Objective: 
+#### Why use this?
 
 ## <u>Schedule: Airflow</u>
 ### Objective: 
@@ -86,6 +110,6 @@ Personal Project (AppWorks School #21 Data Engineering)
 ### Objective: 
 ### Why use this?
 
-## <u>Rate limiter: Redis</u>
+## <u>Rate limiter: FastAPI</u>
 ### Objective: 
 ### Why use this?
