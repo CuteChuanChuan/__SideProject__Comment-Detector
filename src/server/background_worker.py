@@ -6,10 +6,8 @@ import logging
 import uvicorn
 from loguru import logger
 from fastapi import FastAPI
-from datetime import datetime
 import google.cloud.logging
 from dotenv import load_dotenv
-from google.cloud import storage
 from google.oauth2.service_account import Credentials
 from apscheduler.schedulers.background import BackgroundScheduler
 from utils_dashboard.func_get_keyword_from_text import store_top_n_keywords
@@ -44,10 +42,6 @@ credentials = Credentials.from_service_account_info(key_content)
 
 client = google.cloud.logging.Client(credentials=credentials)
 client.setup_logging()
-# cloud_logger = client.logger(name="redis_update")
-
-# structured_logger = google.cloud.logging.handlers.StructuredLogHandler()
-
 redis_update_crawled_data_logger = logging.getLogger("redis_update_crawled_data_logger")
 redis_update_keyword_data_logger = logging.getLogger("redis_update_keyword_data_logger")
 
@@ -69,8 +63,6 @@ def update_overview_crawled_data():
             f"<blue>Finish - update overview crawled data (Time: {end})</blue>"
         )
         crawled_data_update_info = {"crawled_update_time": end}
-        # cloud_logger.log(json.dumps(crawled_data_update_info))
-        # cloud_logger.log(end)
         redis_update_crawled_data_logger.info(json.dumps(crawled_data_update_info))
     except Exception as e:
         logger.error(e)
@@ -106,7 +98,7 @@ scheduler.add_job(
     minute=0,
     timezone=pytz.timezone("Asia/Taipei"),
 )
-# scheduler.add_job(update_keywords_trends, "interval", seconds=60)
+
 
 if __name__ == "__main__":
     uvicorn.run(app, port=8001, host="0.0.0.0")

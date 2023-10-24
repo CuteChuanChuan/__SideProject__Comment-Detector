@@ -124,19 +124,6 @@ def store_top_n_keywords():
     redis_conn.set("keyword_comments_politics_3", json.dumps(comment_politics_days_3))
     redis_conn.set("keyword_comments_politics_7", json.dumps(comment_politics_days_7))
 
-    redis_conn.persist("keyword_title_gossip_1")
-    redis_conn.persist("keyword_title_gossip_3")
-    redis_conn.persist("keyword_title_gossip_7")
-    redis_conn.persist("keyword_title_politics_1")
-    redis_conn.persist("keyword_title_politics_3")
-    redis_conn.persist("keyword_title_politics_7")
-    redis_conn.persist("keyword_comments_gossip_1")
-    redis_conn.persist("keyword_comments_gossip_3")
-    redis_conn.persist("keyword_comments_gossip_7")
-    redis_conn.persist("keyword_comments_politics_1")
-    redis_conn.persist("keyword_comments_politics_3")
-    redis_conn.persist("keyword_comments_politics_7")
-
 
 def retrieve_top_n_keywords(target_collection: str, n_days: int, source: str):
     source = "title" if source == "標題" else "comments"

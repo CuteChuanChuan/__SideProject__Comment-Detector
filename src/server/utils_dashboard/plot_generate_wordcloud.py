@@ -1,4 +1,3 @@
-from loguru import logger
 from wordcloud import WordCloud
 from .config_dashboard import db
 
