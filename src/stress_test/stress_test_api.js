@@ -2,14 +2,14 @@ import http from "k6/http";
 import { check, sleep } from "k6";
 
 export default function () {
-    const res = http.get("https://comment-detector.org/ipaddress/49.217.49.133?target_collection=gossip");
+    const res = http.get("https://comment-detector.org");
     check(res, { 'status was 200': (r) => r.status === 200 });
     // sleep(1);
 }
 
 export const options = {
-    vus: 1000,
-    duration: '30s',
+    vus: 5000,
+    duration: '180s',
 };
 
 // export const options = {
