@@ -1,91 +1,102 @@
 # Comment-Detector
-Personal Project (AppWorks School #21 Data Engineering)
 
-# Data
-## Source
-- PTT - Gossiping
-- PTT - HatePolitics
-
-## Extraction
-- requests + beautifulsoup
-
-
-# Tools and Skills
-## <u>Database: MongoDB (NoSQL)</u>
-### Objective: 
-### Why use this?
-
-## <u>Schedule: Airflow</u>
-### Objective: 
-### Why use this?
-
-## <u>CDC: Kafka</u>
-### Objective: 
-### Why use this?
-### Steps:
-1. downloading from [Kafka edu](https://github.com/mongodb-university/kafka-edu.git)
-2. running docker: ```docker-compose -p mongo-kafka up -d --force-recreate```
-3. adding connectors: ```docker exec -it mongo1 /bin/bash```
-4. creating connector.json: ```nano simplesource.json```
-   ```json
-   {
-     "name": "mongo-simple-source",
-     "config": {
-       "connector.class": "com.mongodb.kafka.connect.MongoSourceConnector",
-       "connection.uri": "mongodb://mongo1",
-       "database": "Tutorial1",
-       "collection": "orders"
-     }
-   }
-   ```
-5. connecting: ```cx simplesource.json```
-
-### Reference:
-1. [MongoDB Quickstart](https://www.mongodb.com/docs/kafka-connector/current/quick-start/)
-2. [Kafka Connector Tutorial Setup](https://www.mongodb.com/docs/kafka-connector/current/tutorials/tutorial-setup/#std-label-kafka-tutorials-docker-setup)
-3. [Getting Started with the MongoDB Kafka Source Connector](https://www.mongodb.com/docs/kafka-connector/master/tutorials/source-connector/)
+## Table of Contents
+* [Introduction](#Introduction)
+* [Architecture](#Architecture)
+* [Data](#Data)
+* [Feature](#Feature)
+* [Tools](#Tools)
+* [Monitoring](#Monitoring)
+* [Clip](#Clip)
+* [Contact](#Contact)
 
 
-## <u>Dashboard: Plotly Dash</u>
-### Objective: 
-1. Create interactive interface for users to explore this product
-2. Create dashboards to demonstrate the product
-### URL: http://3.106.78.149:8000/
-### Why use this?
+## Introduction
+#### A dashboard offering users comprehensive & insightful data about PTT (Taiwan's largest forum)
+#### Users can form judgment about cyber warriors (網軍) and people manipulating public opinions (帶風向) 
+#### Platform: [https://comment-detector.com](https://comment-detector.com)
+![Homepage](readme-img/Homepage.png)
 
-## <u>Middleware - WSGI (Web Server Gateway Interface) server: gunicorn</u>
-### Objective: 
-### Why use this?
 
-## <u>Middleware - ASGI (Asynchronous Server Gateway Interface) server: uvicorn</u>
-### Objective: 
-### Why use this?
+## Architecture
+![Architecture](readme-img/Architecture.png)
 
-## <u>Process manager: pm2</u>
-### Objective: managing the process of streamlit
-### Why use this?
-1. Dashboards needs to be available for users.
-2. Currently, streamlit does not support running with gunicorn.
-### Steps:
-1. installation: ```sudo apt install npm```
-2. installation: ```sudo npm install pm2 -g```
-3. creating .sh: ```vim start_streamlit.sh```
-    ```shell
-    #!/bin/bash
-    gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker
-    ```
-4. changing .sh permission: ```chmod +x start_streamlit.sh```
-5. starting virtual env: ```source ./crawler/bin/activate```
-6. running script:```pm2 start start_streamlit.sh```
+### Compute Engine #1:
+- Aim 1: Executing web crawling every 10 minute orchestrated by Apache Airflow on Docker
+- Aim 2: Cleaning and extracting data 
+- On: GCP Compute Engine
 
-## <u>API: FastAPI</u>
-### Objective: 
-### Why use this?
+### Compute Engine #2:
+- Aim: Deploying Redis as cache system storing data updated by Python scripts scheduled by APScheduler
+- On: GCP Compute Engine
 
-## <u>Cache: Redis</u>
-### Objective: 
-### Why use this?
+### Database
+- Aim: Storing cleaned data and providing data for platform
+- On: MongoDB Atlas
 
-## <u>Rate limiter: Redis</u>
-### Objective: 
-### Why use this?
+### Dashboard (Application)
+- Aim: Retrieving data from MongoDB and demonstrating organized data for users
+- On: image managed by Cloud Run 
+
+## Data
+### Source
+- PTT - Gossiping which has the largest number of users.
+- PTT - HatePolitics which is highly related to politics.
+
+### ETL
+- Extract: web crawling (requests + Beautiful Soup)
+- Transform: python (data cleaning and extraction)
+- Load: MongoDB
+
+## Feature
+- Trend (趨勢分析)：
+  - 提供資料量數據
+  - 呈現熱門關鍵字與文章
+- Keywords (關鍵字分析)：
+  - 使用者輸入想要了解的關鍵字後，儀表板會呈現與關鍵字相關的熱門文章
+  - 統計出留言數量前20名的留言者，以及留言者之間的關係 (Concurrency Analysis)
+- Commenter (留言者分析)：
+  - 使用者輸入想要了解的留言者後，儀表板會呈現該留言者的活躍時段
+  - 彙整該留言者的所有留言，並彙整成文字雲
+- 開源資料 API：
+  - 獲得更多資訊：IP 與作者等
+
+
+
+## Tools
+| Category       | Tool/Technique                  |
+|----------------|---------------------------------|
+| Database       | MongoDB                         |
+| Data Pipeline  | Airflow                         |
+| Dashboard      | Plotly Dash                     |
+| Backend        | FastAPI                         |
+| Cache system   | Redis                           |
+| Autoscaling    | Cloud Run                       |
+| Load Balancing | Cloud Load Balancing            |
+| Monitoring     | Cloud Monitoring, Cloud Logging |
+| Others         | GCP Compute Engine              |
+
+
+## Monitoring
+#### Overall
+- ![overall](readme-img/monitoring-overall.png)
+#### Airflow
+- ![airflow](readme-img/monitoring-airflow.png)
+#### Dashboard
+- ![dashboard](readme-img/monitoring-dashboard.png)
+
+## Clip
+#### 趨勢分析
+- ![Trend](readme-img/demo-trend.gif)
+#### 關鍵字分析
+- ![Keyword](readme-img/demo-keyword.gif)
+#### 留言者分析
+- ![Commenter](readme-img/demo-commenter.gif)
+#### APIs
+- ![ipaddress](readme-img/demo-api.gif)
+
+
+
+
+## Contact
+Raymond Hung kirk336neo@gmail.com
