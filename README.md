@@ -4,6 +4,7 @@
 * [Introduction](#Introduction)
 * [Architecture](#Architecture)
 * [Data](#Data)
+* [Feature](#Feature)
 * [Tools](#Tools)
 * [Monitoring](#Monitoring)
 * [Clip](#Clip)
@@ -46,6 +47,21 @@
 - Extract: web crawling (requests + Beautiful Soup)
 - Transform: python (data cleaning and extraction)
 - Load: MongoDB
+
+## Feature
+- Trend (趨勢分析)：
+  - 提供資料量數據
+  - 呈現熱門關鍵字與文章
+- Keywords (關鍵字分析)：
+  - 使用者輸入想要了解的關鍵字後，儀表板會呈現與關鍵字相關的熱門文章
+  - 統計出留言數量前20名的留言者，以及留言者之間的關係 (Concurrency Analysis)
+- Commenter (留言者分析)：
+  - 使用者輸入想要了解的留言者後，儀表板會呈現該留言者的活躍時段
+  - 彙整該留言者的所有留言，並彙整成文字雲
+- 開源資料 API：
+  - 獲得更多資訊：IP 與作者等
+
+
 
 ## Tools
 | Category       | Tool/Technique                  |
