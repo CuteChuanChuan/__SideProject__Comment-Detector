@@ -95,6 +95,7 @@ jobs:
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c 1-6)
           docker build -t server:$SHORT_SHA --platform linux/amd64 -f DockerfileDashboard .
           docker tag server:$SHORT_SHA "${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE }}:$SHORT_SHA"
+          # asia-east1-docker.pkg.dev/comment-detector-400115/comment-detector
           docker push "${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE }}:$SHORT_SHA"
 
       # END - Docker auth and build
