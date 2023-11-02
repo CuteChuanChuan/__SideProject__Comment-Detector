@@ -372,7 +372,7 @@ def create_keyword_dash_app(requests_pathname_prefix: str = None) -> dash.Dash:
         ],
     )
     def update_commenter_network_graph(n_clicks, keyword_search, dropdown_collection):
-        if n_clicks is None or not keyword_search:
+        if n_clicks is None:
             return (
                 dash.no_update,
                 {"width": "100%", "display": "none"},
